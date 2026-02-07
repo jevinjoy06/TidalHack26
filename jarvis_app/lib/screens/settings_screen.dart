@@ -604,101 +604,214 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _showModelDialog(BuildContext context, SettingsProvider settings) {
-    final controller = TextEditingController(text: settings.model);
     final chatProvider = Provider.of<ChatProvider>(context, listen: false);
-    
-    // Common Featherless.ai models (matching their actual format)
-    final commonModels = [
-      'Qwen/Qwen2.5-14B-Instruct',
-      'Qwen/Qwen2.5-7B-Instruct',
-      'meta-llama/Llama-3.1-8B-Instruct',
-      'meta-llama/Llama-3.1-70B-Instruct',
-      'mistralai/Mistral-7B-Instruct-v0.3',
-      'deepseek-ai/DeepSeek-V2-Chat-0628',
-      'deepseek-ai/deepseek-coder-33b-instruct',
-    ];
+    final isDark = CupertinoTheme.of(context).brightness == Brightness.dark;
 
-    showCupertinoDialog(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: const Text('Select Model'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+    final modelSections = <String, List<String>>{
+      'Top-tier': [
+        'Qwen/Qwen3-Coder-480B-A35B-Instruct',
+        'Qwen/Qwen2.5-72B-Instruct',
+        'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B',
+        'meta-llama/Meta-Llama-3.1-70B-Instruct',
+        'NousResearch/Hermes-3-Llama-3.1-70B',
+        'mistralai/Mistral-Small-3.1-24B-Instruct-2503',
+      ],
+      'Mid-size': [
+        'Qwen/Qwen2.5-14B-Instruct',
+        'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B',
+        'microsoft/Phi-4-mini-instruct',
+        'mistralai/Mistral-Nemo-Instruct-2407',
+      ],
+      'Lightweight': [
+        'Qwen/Qwen2.5-7B-Instruct',
+        'deepseek-ai/DeepSeek-R1-Distill-Llama-8B',
+        'meta-llama/Meta-Llama-3.1-8B-Instruct',
+        'mistralai/Mistral-7B-Instruct-v0.3',
+      ],
+    };
+
+    final customController = TextEditingController();
+
+    Navigator.of(context).push(
+      CupertinoPageRoute(
+        builder: (ctx) => CupertinoPageScaffold(
+          backgroundColor: isDark ? AppTheme.bgDark : AppTheme.bgLightSecondary,
+          navigationBar: CupertinoNavigationBar(
+            backgroundColor: isDark ? AppTheme.bgDarkSecondary : AppTheme.bgLight,
+            border: Border(
+              bottom: BorderSide(
+                color: isDark ? AppTheme.borderDark : AppTheme.borderLight,
+                width: 1,
+              ),
+            ),
+            middle: Text(
+              'Select Model',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppTheme.textPrimary : AppTheme.textDark,
+              ),
+            ),
+            leading: CupertinoButton(
+              padding: EdgeInsets.zero,
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ),
+          child: SafeArea(
+            child: ListView(
               children: [
+                // Custom model input
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: CupertinoTextField(
-                    controller: controller,
-                    placeholder: 'Enter model name (e.g., google/gemma-3-27b-it)',
-                    autocorrect: false,
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Text(
+                    'CUSTOM MODEL',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? AppTheme.textTertiary : AppTheme.textDarkSecondary,
+                      letterSpacing: 1.2,
+                    ),
                   ),
                 ),
-                const Text(
-                  'Common Models:',
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ...commonModels.map((model) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: CupertinoButton(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    color: settings.model == model 
-                        ? AppTheme.primaryMaroon 
-                        : CupertinoColors.systemGrey6,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          model,
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: AppTheme.cardDecoration(isDark),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: CupertinoTextField(
+                          controller: customController,
+                          placeholder: 'org/model-name',
+                          autocorrect: false,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          decoration: const BoxDecoration(),
                           style: TextStyle(
-                            color: settings.model == model 
-                                ? CupertinoColors.white 
-                                : CupertinoColors.black,
+                            color: isDark ? AppTheme.textPrimary : AppTheme.textDark,
                           ),
                         ),
-                        if (settings.model == model)
-                          const Icon(
-                            CupertinoIcons.checkmark,
-                            color: CupertinoColors.white,
-                            size: 18,
+                      ),
+                      CupertinoButton(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          'Use',
+                          style: TextStyle(
+                            color: AppTheme.primaryMaroon,
+                            fontWeight: FontWeight.w600,
                           ),
-                      ],
-                    ),
-                    onPressed: () {
-                      controller.text = model;
-                      settings.setModel(model);
-                      chatProvider.updateModel(model);
-                      Navigator.pop(context);
-                    },
+                        ),
+                        onPressed: () {
+                          final model = customController.text.trim();
+                          if (model.isNotEmpty) {
+                            settings.setModel(model);
+                            chatProvider.updateModel(model);
+                            Navigator.pop(ctx);
+                          }
+                        },
+                      ),
+                    ],
                   ),
-                )),
+                ),
+
+                // Model sections
+                ...modelSections.entries.map((section) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
+                        child: Text(
+                          section.key.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? AppTheme.textTertiary : AppTheme.textDarkSecondary,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: AppTheme.cardDecoration(isDark),
+                        child: Column(
+                          children: section.value.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final model = entry.value;
+                            final isSelected = settings.model == model;
+                            final isLast = index == section.value.length - 1;
+                            // Extract short display name from full model ID
+                            final parts = model.split('/');
+                            final org = parts[0];
+                            final name = parts.length > 1 ? parts[1] : model;
+
+                            return GestureDetector(
+                              onTap: () {
+                                settings.setModel(model);
+                                chatProvider.updateModel(model);
+                                Navigator.pop(ctx);
+                              },
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? AppTheme.primaryMaroon.withOpacity(isDark ? 0.2 : 0.08)
+                                      : null,
+                                  border: isLast
+                                      ? null
+                                      : Border(
+                                          bottom: BorderSide(
+                                            color: isDark ? AppTheme.borderDark : AppTheme.borderLight,
+                                            width: 0.5,
+                                          ),
+                                        ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            name,
+                                            style: TextStyle(
+                                              fontSize: 15,
+                                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                              color: isSelected
+                                                  ? AppTheme.primaryMaroon
+                                                  : (isDark ? AppTheme.textPrimary : AppTheme.textDark),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            org,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: isDark ? AppTheme.textTertiary : AppTheme.textDarkSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (isSelected)
+                                      Icon(
+                                        CupertinoIcons.checkmark_circle_fill,
+                                        color: AppTheme.primaryMaroon,
+                                        size: 22,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                    ],
+                  );
+                }),
+                const SizedBox(height: 32),
               ],
             ),
           ),
         ),
-        actions: [
-          CupertinoDialogAction(
-            child: const Text('Cancel'),
-            onPressed: () => Navigator.pop(context),
-          ),
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            child: const Text('Save'),
-            onPressed: () {
-              if (controller.text.isNotEmpty) {
-                settings.setModel(controller.text);
-                chatProvider.updateModel(controller.text);
-              }
-              Navigator.pop(context);
-            },
-          ),
-        ],
       ),
     );
   }

@@ -10,7 +10,7 @@ class SettingsProvider extends ChangeNotifier {
   String _selectedApiKeyName = '';
   Map<String, String> _apiKeyMap = {};
   String _featherlessBaseUrl = 'https://api.featherless.ai/v1'; // Must include /v1
-  String _model = 'google/gemma-3-27b-it'; // Updated to match Featherless.ai format
+  String _model = 'Qwen/Qwen2.5-14B-Instruct'; // Updated to match Featherless.ai format
   bool _voiceEnabled = true;
   bool _soundEnabled = true;
   ConnectionStatus _connectionStatus = ConnectionStatus.disconnected;
@@ -43,13 +43,14 @@ class SettingsProvider extends ChangeNotifier {
     _onBaseUrlChanged = callback;
   }
 
-  SettingsProvider() {
-    _loadSettings().then((_) {
-      // Test connection after settings are loaded
-      if (_apiKey.isNotEmpty) {
-        testConnection();
-      }
-    });
+  SettingsProvider();
+
+  /// Must be called after callbacks are registered to avoid race conditions.
+  Future<void> initialize() async {
+    await _loadSettings();
+    if (_apiKey.isNotEmpty) {
+      testConnection();
+    }
   }
 
   Future<void> _loadSettings() async {
@@ -76,16 +77,27 @@ class SettingsProvider extends ChangeNotifier {
       _apiKey = prefs.getString('apiKey') ?? '';
     }
     
-    _featherlessBaseUrl = prefs.getString('featherlessBaseUrl') ?? 'https://api.featherless.ai/v1';
-    _model = prefs.getString('model') ?? 'google/gemma-3-27b-it';
+    _featherlessBaseUrl = prefs.getString('featherlessBaseUrl') ?? Secrets.baseUrl;
+    _model = prefs.getString('model') ?? Secrets.model;
     _voiceEnabled = prefs.getBool('voiceEnabled') ?? true;
     _soundEnabled = prefs.getBool('soundEnabled') ?? true;
     
     // Initialize connection status
-    _connectionStatus = _apiKey.isEmpty 
-        ? ConnectionStatus.disconnected 
+    _connectionStatus = _apiKey.isEmpty
+        ? ConnectionStatus.disconnected
         : ConnectionStatus.disconnected;
-    
+
+    // Propagate loaded settings to ChatProvider via callbacks
+    if (_apiKey.isNotEmpty && _onApiKeyChanged != null) {
+      _onApiKeyChanged!(_apiKey);
+    }
+    if (_onModelChanged != null) {
+      _onModelChanged!(_model);
+    }
+    if (_onBaseUrlChanged != null) {
+      _onBaseUrlChanged!(_featherlessBaseUrl);
+    }
+
     notifyListeners();
   }
 

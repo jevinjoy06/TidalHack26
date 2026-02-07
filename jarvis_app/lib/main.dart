@@ -53,6 +53,8 @@ class JarvisApp extends StatelessWidget {
     final settingsProvider = SettingsProvider();
     final tasksProvider = TasksProvider();
     _setupProviders(chatProvider, settingsProvider);
+    // Initialize settings AFTER callbacks are registered
+    settingsProvider.initialize();
 
     return MultiProvider(
       providers: [

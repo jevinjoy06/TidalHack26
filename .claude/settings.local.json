@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter build:*)",
+      "Bash(curl -s -H \"Authorization: Bearer rc_7a701cc51e2aeaa61857851ac1e1a17bdd785056e5e4602e7d9ea5525e0b985a\" \"https://api.featherless.ai/v1/models\")",
+      "Bash(python3:*)",
+      "Bash(curl:*)"
+    ]
+  }
+}

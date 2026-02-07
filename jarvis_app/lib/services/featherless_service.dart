@@ -182,13 +182,20 @@ class FeatherlessService {
     
     // Return common Featherless.ai models as fallback
     return [
+      'Qwen/Qwen3-Coder-480B-A35B-Instruct',
+      'Qwen/Qwen2.5-72B-Instruct',
+      'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B',
+      'meta-llama/Meta-Llama-3.1-70B-Instruct',
+      'NousResearch/Hermes-3-Llama-3.1-70B',
+      'mistralai/Mistral-Small-3.1-24B-Instruct-2503',
       'Qwen/Qwen2.5-14B-Instruct',
+      'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B',
+      'microsoft/Phi-4-mini-instruct',
+      'mistralai/Mistral-Nemo-Instruct-2407',
       'Qwen/Qwen2.5-7B-Instruct',
-      'meta-llama/Llama-3.1-8B-Instruct',
-      'meta-llama/Llama-3.1-70B-Instruct',
+      'deepseek-ai/DeepSeek-R1-Distill-Llama-8B',
+      'meta-llama/Meta-Llama-3.1-8B-Instruct',
       'mistralai/Mistral-7B-Instruct-v0.3',
-      'deepseek-ai/DeepSeek-V2-Chat-0628',
-      'deepseek-ai/deepseek-coder-33b-instruct',
     ];
   }
 
