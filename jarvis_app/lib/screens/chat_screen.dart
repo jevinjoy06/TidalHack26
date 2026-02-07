@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'dart:ui';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../models/message.dart';
 import '../providers/chat_provider.dart';
@@ -259,7 +260,9 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildMinimizedSidebar(bool isDark) {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: const Cubic(0.4, 0, 0.2, 1),
       width: 60,
       decoration: BoxDecoration(
         color: isDark ? AppTheme.bgDarkSecondary : AppTheme.bgLightSecondary,
@@ -365,7 +368,7 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-              // JARVIS branding with gradient
+              // JARVIS branding with gradient + float animation
               Container(
                 width: 100,
                 height: 100,
@@ -385,7 +388,13 @@ class _ChatScreenState extends State<ChatScreen> {
                   size: 50,
                   color: CupertinoColors.white,
                 ),
-              ),
+              )
+                  .animate()
+                  .fadeIn(duration: 400.ms, curve: Curves.easeOut)
+                  .scaleXY(begin: 0.6, end: 1.0, duration: 500.ms, curve: Curves.easeOut)
+                  .then()
+                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                  .moveY(begin: 0, end: -5, duration: 3000.ms, curve: Curves.easeInOut),
               const SizedBox(height: 32),
               Text(
                 'Hello, I\'m JARVIS',
@@ -395,7 +404,10 @@ class _ChatScreenState extends State<ChatScreen> {
                   color: isDark ? AppTheme.textPrimary : AppTheme.textDark,
                   letterSpacing: -0.5,
                 ),
-              ),
+              )
+                  .animate(delay: 150.ms)
+                  .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+                  .slideY(begin: 0.1, end: 0, duration: 350.ms, curve: Curves.easeOut),
               const SizedBox(height: 12),
               Text(
                 'Your AI-powered assistant',
@@ -404,7 +416,10 @@ class _ChatScreenState extends State<ChatScreen> {
                   color: isDark ? AppTheme.textSecondary : AppTheme.textDarkSecondary,
                   fontWeight: FontWeight.w400,
                 ),
-              ),
+              )
+                  .animate(delay: 250.ms)
+                  .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+                  .slideY(begin: 0.1, end: 0, duration: 350.ms, curve: Curves.easeOut),
               const SizedBox(height: 48),
               _buildSuggestionChips(isDark),
               const SizedBox(height: 48),
@@ -412,7 +427,10 @@ class _ChatScreenState extends State<ChatScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 32),
                 child: _buildCompactInputArea(context, isDark),
-              ),
+              )
+                  .animate(delay: 500.ms)
+                  .fadeIn(duration: 400.ms, curve: Curves.easeOut)
+                  .slideY(begin: 0.08, end: 0, duration: 400.ms, curve: Curves.easeOut),
                 ],
               ),
             ),
@@ -449,7 +467,15 @@ class _ChatScreenState extends State<ChatScreen> {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: MessageBubble(message: message),
-              );
+              )
+                  .animate()
+                  .fadeIn(duration: 300.ms, curve: Curves.easeOut)
+                  .slideX(
+                    begin: message.role == MessageRole.user ? 0.05 : -0.05,
+                    end: 0,
+                    duration: 300.ms,
+                    curve: Curves.easeOut,
+                  );
             },
           ),
         ),
@@ -479,7 +505,9 @@ class _ChatScreenState extends State<ChatScreen> {
       spacing: 12,
       runSpacing: 12,
       alignment: WrapAlignment.center,
-      children: suggestions.map((text) {
+      children: suggestions.asMap().entries.map((entry) {
+        final index = entry.key;
+        final text = entry.value;
         return GestureDetector(
           onTap: () {
             _textController.text = text;
@@ -497,7 +525,10 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
           ),
-        );
+        )
+            .animate(delay: Duration(milliseconds: 300 + index * 80))
+            .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+            .scaleXY(begin: 0.9, end: 1.0, duration: 350.ms, curve: Curves.easeOut);
       }).toList(),
     );
   }

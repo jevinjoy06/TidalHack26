@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/settings_provider.dart';
 import '../providers/chat_provider.dart';
 import '../theme/app_theme.dart';
@@ -57,7 +58,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ],
                   isDark,
-                ),
+                )
+                    .animate(delay: 0.ms)
+                    .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+                    .slideY(begin: 0.04, end: 0, duration: 350.ms, curve: const Cubic(0.4, 0, 0.2, 1)),
 
                 // API Configuration
                 _buildSection(
@@ -81,7 +85,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ],
                   isDark,
-                ),
+                )
+                    .animate(delay: 80.ms)
+                    .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+                    .slideY(begin: 0.04, end: 0, duration: 350.ms, curve: const Cubic(0.4, 0, 0.2, 1)),
 
                 // Appearance
                 _buildSection(
@@ -96,7 +103,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ],
                   isDark,
-                ),
+                )
+                    .animate(delay: 160.ms)
+                    .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+                    .slideY(begin: 0.04, end: 0, duration: 350.ms, curve: const Cubic(0.4, 0, 0.2, 1)),
 
                 // Voice
                 _buildSection(
@@ -119,7 +129,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ],
                   isDark,
-                ),
+                )
+                    .animate(delay: 240.ms)
+                    .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+                    .slideY(begin: 0.04, end: 0, duration: 350.ms, curve: const Cubic(0.4, 0, 0.2, 1)),
 
                 // About
                 _buildSection(
@@ -130,7 +143,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         showDivider: false),
                   ],
                   isDark,
-                ),
+                )
+                    .animate(delay: 320.ms)
+                    .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+                    .slideY(begin: 0.04, end: 0, duration: 350.ms, curve: const Cubic(0.4, 0, 0.2, 1)),
 
                 const SizedBox(height: 32),
               ],

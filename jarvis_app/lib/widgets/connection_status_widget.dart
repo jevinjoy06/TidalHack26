@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../models/connection_status.dart';
 import '../theme/app_theme.dart';
 
@@ -53,7 +54,12 @@ class ConnectionStatusWidget extends StatelessWidget {
                       : null,
                 ),
                 child: status == ConnectionStatus.connecting
-                    ? const CupertinoActivityIndicator()
+                    ? const Icon(
+                        CupertinoIcons.arrow_clockwise,
+                        color: CupertinoColors.systemGrey,
+                        size: 24,
+                      ).animate(onPlay: (c) => c.repeat())
+                        .rotate(duration: const Duration(milliseconds: 1000))
                     : Icon(
                         status.statusIcon,
                         color: status == ConnectionStatus.connected
@@ -61,7 +67,10 @@ class ConnectionStatusWidget extends StatelessWidget {
                             : status.statusColor,
                         size: 24,
                       ),
-              ),
+              )
+                  .animate()
+                  .fadeIn(duration: const Duration(milliseconds: 300))
+                  .scaleXY(begin: 0.8, end: 1.0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(

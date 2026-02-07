@@ -1,8 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/tasks_provider.dart';
 import '../models/task.dart';
 import '../theme/app_theme.dart';
+import '../widgets/shimmer_loading.dart';
 
 class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key});
@@ -130,7 +132,7 @@ class _TasksScreenState extends State<TasksScreen> {
                 // Task list
                 Expanded(
                   child: provider.isLoading && provider.tasks.isEmpty
-                      ? const Center(child: CupertinoActivityIndicator())
+                      ? _buildSkeletonLoading()
                       : provider.tasks.isEmpty
                           ? _buildEmptyState(isDark)
                           : _buildTaskList(provider, isDark),
@@ -140,6 +142,13 @@ class _TasksScreenState extends State<TasksScreen> {
           },
         ),
       ),
+    );
+  }
+
+  Widget _buildSkeletonLoading() {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      children: List.generate(5, (i) => SkeletonCard(lines: 2)),
     );
   }
 
@@ -167,7 +176,10 @@ class _TasksScreenState extends State<TasksScreen> {
               size: 40,
               color: CupertinoColors.white,
             ),
-          ),
+          )
+              .animate()
+              .fadeIn(duration: 400.ms, curve: Curves.easeOut)
+              .scaleXY(begin: 0.6, end: 1.0, duration: 500.ms, curve: Curves.easeOut),
           const SizedBox(height: 24),
           Text(
             'No tasks yet',
@@ -177,7 +189,10 @@ class _TasksScreenState extends State<TasksScreen> {
               color: isDark ? AppTheme.textPrimary : AppTheme.textDark,
               letterSpacing: -0.5,
             ),
-          ),
+          )
+              .animate(delay: 150.ms)
+              .fadeIn(duration: 350.ms)
+              .slideY(begin: 0.1, end: 0, duration: 350.ms),
           const SizedBox(height: 8),
           Text(
             'Create your first task to get started',
@@ -185,7 +200,10 @@ class _TasksScreenState extends State<TasksScreen> {
               fontSize: 16,
               color: isDark ? AppTheme.textSecondary : AppTheme.textDarkSecondary,
             ),
-          ),
+          )
+              .animate(delay: 250.ms)
+              .fadeIn(duration: 350.ms)
+              .slideY(begin: 0.1, end: 0, duration: 350.ms),
           const SizedBox(height: 8),
           Text(
             'Create tasks via chat or tap + above',
@@ -193,7 +211,10 @@ class _TasksScreenState extends State<TasksScreen> {
               fontSize: 15,
               color: CupertinoColors.systemGrey,
             ),
-          ),
+          )
+              .animate(delay: 350.ms)
+              .fadeIn(duration: 350.ms)
+              .slideY(begin: 0.1, end: 0, duration: 350.ms),
         ],
       ),
     );
@@ -204,7 +225,15 @@ class _TasksScreenState extends State<TasksScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       itemCount: provider.tasks.length,
       itemBuilder: (context, index) {
-        return _buildTaskCard(provider.tasks[index], provider, isDark);
+        return _buildTaskCard(provider.tasks[index], provider, isDark)
+            .animate(delay: Duration(milliseconds: index * 50))
+            .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+            .slideY(
+              begin: 0.05,
+              end: 0,
+              duration: 350.ms,
+              curve: const Cubic(0.4, 0, 0.2, 1),
+            );
       },
     );
   }
