@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'providers/chat_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/tasks_provider.dart';
+import 'services/tools/tool_setup.dart';
 import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
 
@@ -20,7 +21,9 @@ Future<void> main() async {
     // or use environment variables
     debugPrint('Warning: .env file not found. Using defaults or app settings.');
   }
-  
+
+  registerAllTools();
+
   // Set system UI overlay style
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(

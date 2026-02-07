@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import '../config/secrets.dart';
 import '../models/message.dart';
 import '../models/connection_status.dart';
+import '../models/completion_result.dart';
 
 class FeatherlessService {
   final http.Client _client;
@@ -74,6 +75,80 @@ class FeatherlessService {
         final errorData = jsonDecode(response.body);
         throw Exception('Featherless.ai API error: ${errorData['error']?['message'] ?? response.statusCode}');
       }
+    } on TimeoutException {
+      throw Exception('Request timed out. Please try again.');
+    } catch (e) {
+      throw Exception('Failed to connect to Featherless.ai: $e');
+    }
+  }
+
+  /// Send a chat message with tool definitions (OpenAI-compatible function calling).
+  /// [messages] is the full conversation including tool results; caller manages history.
+  /// [tools] is a list of tool definitions in OpenAI format: {type: "function", function: {name, description, parameters}}.
+  /// Returns CompletionResult with either content (text) or toolCalls.
+  Future<CompletionResult> sendMessageWithTools(
+    List<Map<String, dynamic>> messages,
+    List<Map<String, dynamic>> tools, {
+    String toolChoice = 'auto',
+  }) async {
+    if (_apiKey.isEmpty) {
+      throw Exception('Featherless.ai API key not configured.');
+    }
+
+    try {
+      final endpoint = _baseUrl.endsWith('/v1')
+          ? '$_baseUrl/chat/completions'
+          : '$_baseUrl/v1/chat/completions';
+
+      final body = <String, dynamic>{
+        'model': _model,
+        'messages': messages,
+        'tools': tools,
+        'tool_choice': toolChoice == 'none' ? 'none' : 'auto',
+        'temperature': 0.7,
+        'max_tokens': 2000,
+      };
+
+      final response = await _client.post(
+        Uri.parse(endpoint),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $_apiKey',
+        },
+        body: jsonEncode(body),
+      ).timeout(const Duration(seconds: 120));
+
+      if (response.statusCode != 200) {
+        final errorData = jsonDecode(response.body);
+        throw Exception(
+            'Featherless.ai API error: ${errorData['error']?['message'] ?? response.statusCode}');
+      }
+
+      final data = jsonDecode(response.body);
+      final choices = data['choices'] as List?;
+      if (choices == null || choices.isEmpty) {
+        throw Exception('No choices in API response');
+      }
+
+      final choice = choices[0] as Map<String, dynamic>;
+      final message = choice['message'] as Map<String, dynamic>? ?? {};
+      final finishReason = choice['finish_reason'] as String? ?? 'stop';
+
+      final content = message['content'] as String?;
+      final toolCallsRaw = message['tool_calls'] as List?;
+
+      List<ToolCall>? toolCalls;
+      if (toolCallsRaw != null && toolCallsRaw.isNotEmpty) {
+        toolCalls = toolCallsRaw
+            .map((tc) => ToolCall.fromJson(tc as Map<String, dynamic>))
+            .toList();
+      }
+
+      return CompletionResult(
+        content: content,
+        toolCalls: toolCalls,
+        finishReason: finishReason,
+      );
     } on TimeoutException {
       throw Exception('Request timed out. Please try again.');
     } catch (e) {

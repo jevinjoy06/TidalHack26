@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../providers/settings_provider.dart';
@@ -6,6 +7,9 @@ import '../providers/chat_provider.dart';
 import '../theme/app_theme.dart';
 import '../widgets/connection_status_widget.dart';
 import '../models/connection_status.dart';
+import '../services/featherless_service.dart';
+import '../services/agent_orchestrator.dart';
+import '../services/tools/tool_registry.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -90,6 +94,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     .fadeIn(duration: 350.ms, curve: Curves.easeOut)
                     .slideY(begin: 0.04, end: 0, duration: 350.ms, curve: const Cubic(0.4, 0, 0.2, 1)),
 
+                // Debug: Test Tool Calling & Orchestrator (only in debug mode)
+                if (kDebugMode)
+                  _buildSection(
+                    'Debug',
+                    [
+                      _buildDebugTestToolCallTile(context, settings, isDark),
+                      _buildDebugTestOrchestratorTile(context, settings, isDark),
+                      _buildDebugTestToolRegistryTile(context, settings, isDark),
+                    ],
+                    isDark,
+                  ),
+
                 // Appearance
                 _buildSection(
                   'Appearance',
@@ -155,6 +171,327 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildDebugTestToolCallTile(
+      BuildContext context, SettingsProvider settings, bool isDark) {
+    return CupertinoButton(
+      padding: const EdgeInsets.all(16),
+      alignment: Alignment.centerLeft,
+      onPressed: () => _runToolCallingTest(context, settings, isDark),
+      child: Row(
+        children: [
+          Icon(
+            CupertinoIcons.wrench,
+            color: isDark ? AppTheme.textSecondary : AppTheme.textDarkSecondary,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'Test Tool Calling (Step 1)',
+            style: TextStyle(
+              fontSize: 16,
+              color: isDark ? AppTheme.textPrimary : AppTheme.textDark,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _runToolCallingTest(
+      BuildContext context, SettingsProvider settings, bool isDark) async {
+    showCupertinoDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Testing...'),
+        content: const Padding(
+          padding: EdgeInsets.only(top: 12),
+          child: Text('Calling Featherless with a test tool...'),
+        ),
+      ),
+    );
+
+    try {
+      final service = FeatherlessService(
+        apiKey: settings.apiKey,
+        baseUrl: settings.featherlessBaseUrl,
+        model: settings.model,
+      );
+      final tools = [
+        {
+          'type': 'function',
+          'function': {
+            'name': 'get_weather',
+            'description': 'Get the current weather for a location',
+            'parameters': {
+              'type': 'object',
+              'properties': {
+                'location': {'type': 'string', 'description': 'City name'},
+              },
+            },
+          },
+        },
+      ];
+      final messages = [
+        {'role': 'user', 'content': 'What is the weather in Boston?'},
+      ];
+      final result =
+          await service.sendMessageWithTools(messages, tools);
+      service.dispose();
+
+      if (!context.mounted) return;
+      Navigator.pop(context); // Dismiss loading
+
+      final msg = result.hasToolCalls
+          ? 'Tool calls: ${result.toolCalls!.map((t) => t.name).join(", ")}\n'
+              'Args: ${result.toolCalls!.first.arguments}'
+          : 'Content: ${result.content ?? "(empty)"}';
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Step 1 OK'),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(msg),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.pop(context); // Dismiss loading
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Test Failed'),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(e.toString()),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildDebugTestOrchestratorTile(
+      BuildContext context, SettingsProvider settings, bool isDark) {
+    return CupertinoButton(
+      padding: const EdgeInsets.all(16),
+      alignment: Alignment.centerLeft,
+      onPressed: () => _runOrchestratorTest(context, settings, isDark),
+      child: Row(
+        children: [
+          Icon(
+            CupertinoIcons.arrow_2_circlepath,
+            color: isDark ? AppTheme.textSecondary : AppTheme.textDarkSecondary,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'Test Orchestrator (Step 2)',
+            style: TextStyle(
+              fontSize: 16,
+              color: isDark ? AppTheme.textPrimary : AppTheme.textDark,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _runOrchestratorTest(
+      BuildContext context, SettingsProvider settings, bool isDark) async {
+    showCupertinoDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Testing...'),
+        content: const Padding(
+          padding: EdgeInsets.only(top: 12),
+          child: Text('Running agent loop (LLM → tool → LLM)...'),
+        ),
+      ),
+    );
+
+    try {
+      final service = FeatherlessService(
+        apiKey: settings.apiKey,
+        baseUrl: settings.featherlessBaseUrl,
+        model: settings.model,
+      );
+      final tools = [
+        {
+          'type': 'function',
+          'function': {
+            'name': 'get_weather',
+            'description': 'Get the current weather for a location',
+            'parameters': {
+              'type': 'object',
+              'properties': {
+                'location': {'type': 'string', 'description': 'City name'},
+              },
+            },
+          },
+        },
+      ];
+      final orchestrator = AgentOrchestrator(
+        service: service,
+        tools: tools,
+        executeTool: (name, args) async {
+          // Stub: return fake weather for any location
+          return 'Sunny, 72°F (22°C). Light breeze.';
+        },
+      );
+      final result = await orchestrator.run('What is the weather in Boston?');
+      service.dispose();
+
+      if (!context.mounted) return;
+      Navigator.pop(context);
+
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Step 2 OK'),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text('Final answer:\n\n$result'),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.pop(context);
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Test Failed'),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(e.toString()),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  Widget _buildDebugTestToolRegistryTile(
+      BuildContext context, SettingsProvider settings, bool isDark) {
+    return CupertinoButton(
+      padding: const EdgeInsets.all(16),
+      alignment: Alignment.centerLeft,
+      onPressed: () => _runToolRegistryTest(context, settings, isDark),
+      child: Row(
+        children: [
+          Icon(
+            CupertinoIcons.square_stack_3d_up,
+            color: isDark ? AppTheme.textSecondary : AppTheme.textDarkSecondary,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'Test Tool Registry (Step 3)',
+            style: TextStyle(
+              fontSize: 16,
+              color: isDark ? AppTheme.textPrimary : AppTheme.textDark,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _runToolRegistryTest(
+      BuildContext context, SettingsProvider settings, bool isDark) async {
+    showCupertinoDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => CupertinoAlertDialog(
+        title: const Text('Testing...'),
+        content: const Padding(
+          padding: EdgeInsets.only(top: 12),
+          child: Text('Running agent with ToolRegistry (open_url, send_email, etc.)...'),
+        ),
+      ),
+    );
+
+    try {
+      final service = FeatherlessService(
+        apiKey: settings.apiKey,
+        baseUrl: settings.featherlessBaseUrl,
+        model: settings.model,
+      );
+      final registry = ToolRegistry.global;
+      final orchestrator = AgentOrchestrator(
+        service: service,
+        tools: registry.getToolsForLLM(),
+        executeTool: (name, args) => registry.execute(name, args),
+      );
+      final result = await orchestrator.run(
+        'Open https://google.com in my browser.',
+      );
+      service.dispose();
+
+      if (!context.mounted) return;
+      Navigator.pop(context);
+
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Step 3 OK'),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text('Result:\n\n$result'),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      Navigator.pop(context);
+      showCupertinoDialog(
+        context: context,
+        builder: (ctx) => CupertinoAlertDialog(
+          title: const Text('Test Failed'),
+          content: Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text(e.toString()),
+          ),
+          actions: [
+            CupertinoDialogAction(
+              child: const Text('OK'),
+              onPressed: () => Navigator.pop(ctx),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   Widget _buildSection(String title, List<Widget> children, bool isDark) {
