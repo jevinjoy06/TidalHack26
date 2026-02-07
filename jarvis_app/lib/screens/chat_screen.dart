@@ -350,16 +350,21 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _buildEmptyStateWithInput(BuildContext context, bool isDark) {
     return Container(
-        decoration: BoxDecoration(
-          gradient: isDark ? AppTheme.darkGradient : null,
-          color: isDark ? null : AppTheme.bgLightSecondary,
-        ),
-      child: Center(
+      decoration: BoxDecoration(
+        gradient: isDark ? AppTheme.darkGradient : null,
+        color: isDark ? null : AppTheme.bgLightSecondary,
+      ),
+      child: SingleChildScrollView(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 700),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+          constraints: BoxConstraints(
+            minHeight: MediaQuery.of(context).size.height,
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 700),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
               // JARVIS branding with gradient
               Container(
                 width: 100,
@@ -408,7 +413,9 @@ class _ChatScreenState extends State<ChatScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 32),
                 child: _buildCompactInputArea(context, isDark),
               ),
-            ],
+                ],
+              ),
+            ),
           ),
         ),
       ),
