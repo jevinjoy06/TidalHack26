@@ -73,12 +73,12 @@ export default function App() {
 
         {/* Top Bar */}
         <div className="relative z-10 flex items-center justify-end gap-3 border-b border-border/50 bg-background/80 px-6 py-3 backdrop-blur-sm">
-          <Button
+    {/* <Button
             variant="outline"
             className="gap-2 border-secondary/30 bg-card/40 text-secondary hover:bg-card/60 hover:border-secondary/50 hover:text-secondary shadow-sm"
           >
             Voice Mode
-          </Button>
+          </Button> */}
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-accent to-secondary shadow-sm shadow-accent/30">
             <User className="h-4 w-4 text-white" />
           </div>
