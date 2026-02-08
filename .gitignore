@@ -1,3 +1,9 @@
 .env
 nul
 **/.DS_Store
+
+# Python virtual environments
+.venv/
+venv/
+**/.venv/
+**/venv/

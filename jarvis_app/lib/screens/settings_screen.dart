@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show ScaffoldMessenger, SnackBar;
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -9,6 +10,7 @@ import '../widgets/connection_status_widget.dart';
 import '../models/connection_status.dart';
 import '../services/featherless_service.dart';
 import '../services/agent_orchestrator.dart';
+import '../services/adk_service.dart';
 import '../services/tools/tool_registry.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -24,319 +26,179 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final brightness = CupertinoTheme.of(context).brightness;
     final isDark = brightness == Brightness.dark;
 
-    return Consumer<SettingsProvider>(
-      builder: (context, settings, _) {
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 896),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title + subtitle (Figma)
-                  Text(
-                    'Settings',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? AppTheme.figmaForeground : AppTheme.textDark,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Configure your JARVIS instance',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isDark ? AppTheme.figmaMutedForeground : AppTheme.textDarkSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  // System status strip (Figma)
-                  _buildStatusStrip(settings, isDark),
-                  const SizedBox(height: 32),
-                  // Connection
-                  _buildFigmaSectionTitle('Connection'),
-                  const SizedBox(height: 12),
-                  ConnectionStatusWidget(
-                    status: settings.connectionStatus,
-                    errorMessage: settings.connectionError,
-                    lastChecked: DateTime.now(),
-                    onRefresh: () => settings.testConnection(),
-                  ),
-                  const SizedBox(height: 32),
-                  // Featherless.ai API
-                  _buildFigmaSectionTitle('Featherless.ai API'),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppTheme.figmaCard.withOpacity(0.4) : AppTheme.bgLight,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isDark ? AppTheme.figmaBorder : AppTheme.borderLight,
-                        width: 1,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildApiKeyDropdown(context, settings, isDark),
-                        _buildNavigationTile(
-                          'Base URL',
-                          settings.featherlessBaseUrl,
-                          CupertinoIcons.link,
-                          () => _showBaseUrlDialog(context, settings),
-                          isDark,
-                        ),
-                        _buildNavigationTile(
-                          'Model',
-                          settings.model,
-                          CupertinoIcons.cube,
-                          () => _showModelDialog(context, settings),
-                          isDark,
-                          showDivider: false,
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (kDebugMode) ...[
-                    const SizedBox(height: 32),
-                    _buildFigmaSectionTitle('Debug', badge: 'DEV MODE'),
-                    const SizedBox(height: 12),
-                    Container(
+    return CupertinoPageScaffold(
+      backgroundColor: isDark ? AppTheme.bgDark : AppTheme.bgLightSecondary,
+      navigationBar: CupertinoNavigationBar(
+        transitionBetweenRoutes: false,
+        backgroundColor: isDark ? AppTheme.bgDarkSecondary : AppTheme.bgLight,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? AppTheme.borderDark : AppTheme.borderLight,
+            width: 1,
+          ),
+        ),
+        middle: Text(
+          'Settings',
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: isDark ? AppTheme.textPrimary : AppTheme.textDark,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        child: Consumer<SettingsProvider>(
+          builder: (context, settings, _) {
+            return ListView(
+              children: [
+                // Connection Status
+                _buildSection(
+                  'Connection',
+                  [
+                    Padding(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: isDark ? AppTheme.figmaCard.withOpacity(0.4) : AppTheme.bgLight,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isDark ? AppTheme.figmaBorder : AppTheme.borderLight,
-                          width: 1,
-                        ),
-                      ),
-                      child: Column(
-                        children: [
-                          _buildDebugTestToolCallTile(context, settings, isDark),
-                          _buildDebugTestOrchestratorTile(context, settings, isDark),
-                          _buildDebugTestToolRegistryTile(context, settings, isDark),
-                        ],
+                      child: ConnectionStatusWidget(
+                        status: settings.connectionStatus,
+                        errorMessage: settings.connectionError,
+                        lastChecked: DateTime.now(),
+                        onRefresh: () => settings.testConnection(),
                       ),
                     ),
                   ],
-                  const SizedBox(height: 32),
-                  _buildFigmaSectionTitle('Appearance'),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppTheme.figmaCard.withOpacity(0.4) : AppTheme.bgLight,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isDark ? AppTheme.figmaBorder : AppTheme.borderLight,
-                        width: 1,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildSwitchTile(
-                          'Dark Mode',
-                          CupertinoIcons.moon_fill,
-                          'Enable dark theme',
-                          settings.isDarkMode,
-                          (value) => settings.setDarkMode(value),
-                          isDark,
-                        ),
-                        _buildSwitchTile(
-                          'Voice Input',
-                          CupertinoIcons.mic,
-                          'Use voice to interact',
-                          settings.voiceEnabled,
-                          (value) => settings.setVoiceEnabled(value),
-                          isDark,
-                        ),
-                        _buildSwitchTile(
-                          'Sound Effects',
-                          CupertinoIcons.speaker_2,
-                          'Play sounds',
-                          settings.soundEnabled,
-                          (value) => settings.setSoundEnabled(value),
-                          isDark,
-                          showDivider: false,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                  // Footer (Figma)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppTheme.figmaCard.withOpacity(0.2) : AppTheme.bgLightSecondary,
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: (isDark ? AppTheme.figmaBorder : AppTheme.borderLight).withOpacity(0.3),
-                        width: 1,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          'JARVIS v2.1.0 • Build 20260207',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontFamily: 'monospace',
-                            color: isDark ? AppTheme.figmaMutedForeground : AppTheme.textDarkSecondary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          '© 2026 Personal Project',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontFamily: 'monospace',
-                            color: (isDark ? AppTheme.figmaMutedForeground : AppTheme.textDarkSecondary).withOpacity(0.7),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
+                  isDark,
+                )
+                    .animate(delay: 0.ms)
+                    .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+                    .slideY(begin: 0.04, end: 0, duration: 350.ms, curve: const Cubic(0.4, 0, 0.2, 1)),
 
-  Widget _buildStatusStrip(SettingsProvider settings, bool isDark) {
-    final statusColor = settings.connectionStatus == ConnectionStatus.connected
-        ? AppTheme.success
-        : settings.connectionStatus == ConnectionStatus.connecting
-            ? AppTheme.warning
-            : AppTheme.error;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: isDark ? AppTheme.figmaCard.withOpacity(0.3) : AppTheme.bgLightTertiary,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: (isDark ? AppTheme.figmaBorder : AppTheme.borderLight).withOpacity(0.5),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Text(
-                'LATENCY: ',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontFamily: 'monospace',
-                  color: isDark ? AppTheme.figmaMutedForeground : AppTheme.textDarkSecondary,
-                ),
-              ),
-              Text(
-                settings.lastLatencyMs != null
-                    ? '${settings.lastLatencyMs}ms'
-                    : '—',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontFamily: 'monospace',
-                  color: settings.lastLatencyMs != null
-                      ? AppTheme.success
-                      : (isDark ? AppTheme.figmaMutedForeground : AppTheme.textDarkSecondary),
-                ),
-              ),
-              const SizedBox(width: 24),
-              Text(
-                'PROVIDER: ',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontFamily: 'monospace',
-                  color: isDark ? AppTheme.figmaMutedForeground : AppTheme.textDarkSecondary,
-                ),
-              ),
-              Text(
-                settings.connectionStatus == ConnectionStatus.connected ? 'ONLINE' : 'OFFLINE',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontFamily: 'monospace',
-                  color: AppTheme.figmaSecondary,
-                ),
-              ),
-              const SizedBox(width: 24),
-              Text(
-                'MODEL: ',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontFamily: 'monospace',
-                  color: isDark ? AppTheme.figmaMutedForeground : AppTheme.textDarkSecondary,
-                ),
-              ),
-              Text(
-                settings.model.length > 12 ? '${settings.model.substring(0, 12)}…' : settings.model,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontFamily: 'monospace',
-                  color: AppTheme.figmaAccent,
-                ),
-              ),
-            ],
-          ),
-          Container(
-            width: 8,
-            height: 8,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: statusColor,
-              boxShadow: [
-                BoxShadow(
-                  color: statusColor.withOpacity(0.6),
-                  blurRadius: 4,
-                ),
+                // API Configuration
+                _buildSection(
+                  'Featherless.ai API',
+                  [
+                    _buildApiKeyDropdown(context, settings, isDark),
+                    _buildNavigationTile(
+                      'Base URL',
+                      settings.featherlessBaseUrl,
+                      CupertinoIcons.link,
+                      () => _showBaseUrlDialog(context, settings),
+                      isDark,
+                    ),
+                    _buildNavigationTile(
+                      'Model',
+                      settings.model,
+                      CupertinoIcons.cube,
+                      () => _showModelDialog(context, settings),
+                      isDark,
+                      showDivider: false,
+                    ),
+                  ],
+                  isDark,
+                )
+                    .animate(delay: 80.ms)
+                    .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+                    .slideY(begin: 0.04, end: 0, duration: 350.ms, curve: const Cubic(0.4, 0, 0.2, 1)),
+
+                // ADK Backend
+                _buildSection(
+                  'ADK Backend',
+                  [
+                    _buildSwitchTile(
+                      'Use ADK',
+                      CupertinoIcons.gear,
+                      settings.useAdkBackend,
+                      (value) => settings.setUseAdkBackend(value),
+                      isDark,
+                    ),
+                    _buildNavigationTile(
+                      'ADK URL',
+                      settings.adkBackendUrl,
+                      CupertinoIcons.link,
+                      () => _showAdkUrlDialog(context, settings),
+                      isDark,
+                    ),
+                    _buildAdkTestTile(context, settings, isDark),
+                  ],
+                  isDark,
+                )
+                    .animate(delay: 120.ms)
+                    .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+                    .slideY(begin: 0.04, end: 0, duration: 350.ms, curve: const Cubic(0.4, 0, 0.2, 1)),
+
+                // Debug: Test Tool Calling & Orchestrator (only in debug mode)
+                if (kDebugMode)
+                  _buildSection(
+                    'Debug',
+                    [
+                      _buildDebugTestToolCallTile(context, settings, isDark),
+                      _buildDebugTestOrchestratorTile(context, settings, isDark),
+                      _buildDebugTestToolRegistryTile(context, settings, isDark),
+                    ],
+                    isDark,
+                  ),
+
+                // Appearance
+                _buildSection(
+                  'Appearance',
+                  [
+                    _buildSwitchTile(
+                      'Dark Mode',
+                      CupertinoIcons.moon_fill,
+                      settings.isDarkMode,
+                      (value) => settings.setDarkMode(value),
+                      isDark,
+                    ),
+                  ],
+                  isDark,
+                )
+                    .animate(delay: 160.ms)
+                    .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+                    .slideY(begin: 0.04, end: 0, duration: 350.ms, curve: const Cubic(0.4, 0, 0.2, 1)),
+
+                // Voice
+                _buildSection(
+                  'Voice',
+                  [
+                    _buildSwitchTile(
+                      'Voice Input',
+                      CupertinoIcons.mic,
+                      settings.voiceEnabled,
+                      (value) => settings.setVoiceEnabled(value),
+                      isDark,
+                    ),
+                    _buildSwitchTile(
+                      'Sound Effects',
+                      CupertinoIcons.speaker_2,
+                      settings.soundEnabled,
+                      (value) => settings.setSoundEnabled(value),
+                      isDark,
+                      showDivider: false,
+                    ),
+                  ],
+                  isDark,
+                )
+                    .animate(delay: 240.ms)
+                    .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+                    .slideY(begin: 0.04, end: 0, duration: 350.ms, curve: const Cubic(0.4, 0, 0.2, 1)),
+
+                // About
+                _buildSection(
+                  'About',
+                  [
+                    _buildInfoTile('Version', '1.0.0', isDark),
+                    _buildInfoTile('Made with', 'Flutter & Featherless.ai', isDark,
+                        showDivider: false),
+                  ],
+                  isDark,
+                )
+                    .animate(delay: 320.ms)
+                    .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+                    .slideY(begin: 0.04, end: 0, duration: 350.ms, curve: const Cubic(0.4, 0, 0.2, 1)),
+
+                const SizedBox(height: 32),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFigmaSectionTitle(String title, {String? badge}) {
-    final isDark = CupertinoTheme.of(context).brightness == Brightness.dark;
-    return Row(
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: isDark ? AppTheme.figmaForeground : AppTheme.textDark,
-          ),
+            );
+          },
         ),
-        if (badge != null) ...[
-          const SizedBox(width: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppTheme.figmaSecondary.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: AppTheme.figmaSecondary.withOpacity(0.2), width: 1),
-            ),
-            child: Text(
-              badge,
-              style: TextStyle(
-                fontSize: 11,
-                fontFamily: 'monospace',
-                color: AppTheme.figmaSecondary.withOpacity(0.9),
-              ),
-            ),
-          ),
-        ],
-      ],
+      ),
     );
   }
 
@@ -520,7 +382,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           return 'Sunny, 72°F (22°C). Light breeze.';
         },
       );
-      final result = await orchestrator.run('What is the weather in Boston?');
+      final (result, _) = await orchestrator.run([
+        {'role': 'user', 'content': 'What is the weather in Boston?'},
+      ]);
       service.dispose();
 
       if (!context.mounted) return;
@@ -615,9 +479,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         tools: registry.getToolsForLLM(),
         executeTool: (name, args) => registry.execute(name, args),
       );
-      final result = await orchestrator.run(
-        'Open https://google.com in my browser.',
-      );
+      final (result, _) = await orchestrator.run([
+        {'role': 'user', 'content': 'Open https://google.com in my browser.'},
+      ]);
       service.dispose();
 
       if (!context.mounted) return;
@@ -661,6 +525,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Widget _buildSection(String title, List<Widget> children, bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 24, 16, 12),
+          child: Text(
+            title.toUpperCase(),
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: isDark ? AppTheme.textTertiary : AppTheme.textDarkSecondary,
+              letterSpacing: 1.2,
+            ),
+          ),
+        ),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: AppTheme.cardDecoration(isDark),
+          child: Column(children: children),
+        ),
+      ],
+    );
+  }
 
   Widget _buildApiKeyDropdown(BuildContext context, SettingsProvider settings, bool isDark) {
     final availableKeys = settings.availableApiKeyNames;
@@ -886,7 +774,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget _buildSwitchTile(
     String title,
     IconData icon,
-    String subtitle,
     bool value,
     ValueChanged<bool> onChanged,
     bool isDark, {
@@ -898,7 +785,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         border: showDivider
             ? Border(
                 bottom: BorderSide(
-                  color: (isDark ? AppTheme.figmaBorder : AppTheme.borderLight).withOpacity(0.5),
+                  color: isDark ? AppTheme.borderDark : AppTheme.borderLight,
                   width: 1,
                 ),
               )
@@ -907,43 +794,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Row(
         children: [
           Container(
-            width: 32,
-            height: 32,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
-              color: AppTheme.figmaAccent.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppTheme.figmaAccent.withOpacity(0.3), width: 1),
+              gradient: AppTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: AppTheme.figmaAccent, size: 16),
+            child: Icon(icon, color: CupertinoColors.white, size: 20),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: isDark ? AppTheme.figmaForeground : AppTheme.textDark,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: isDark ? AppTheme.figmaMutedForeground : AppTheme.textDarkSecondary,
-                  ),
-                ),
-              ],
+            child: Text(
+              title,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: isDark ? AppTheme.textPrimary : AppTheme.textDark,
+              ),
             ),
           ),
           CupertinoSwitch(
             value: value,
             onChanged: onChanged,
-            activeColor: AppTheme.figmaAccent,
+            activeColor: AppTheme.primaryMaroon,
           ),
         ],
       ),
@@ -1065,6 +938,86 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _showAddApiKeyDialog(context, settings);
   }
 
+  Widget _buildAdkTestTile(
+      BuildContext context, SettingsProvider settings, bool isDark) {
+    return CupertinoButton(
+      padding: const EdgeInsets.all(16),
+      alignment: Alignment.centerLeft,
+      onPressed: () => _testAdkConnection(context, settings),
+      child: Row(
+        children: [
+          Icon(
+            CupertinoIcons.checkmark_circle,
+            color: isDark ? AppTheme.textSecondary : AppTheme.textDarkSecondary,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'Test ADK Connection',
+            style: TextStyle(
+              fontSize: 16,
+              color: isDark ? AppTheme.textPrimary : AppTheme.textDark,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _testAdkConnection(
+      BuildContext context, SettingsProvider settings) async {
+    final url = settings.adkBackendUrl;
+    if (url.isEmpty) {
+      _showSnackBar(context, 'ADK URL is empty');
+      return;
+    }
+    final ok = await AdkService(baseUrl: url).testConnection();
+    if (context.mounted) {
+      _showSnackBar(
+        context,
+        ok ? 'ADK connected (jarvis_agent found)' : 'ADK not reachable',
+      );
+    }
+  }
+
+  void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  void _showAdkUrlDialog(BuildContext context, SettingsProvider settings) {
+    final controller = TextEditingController(text: settings.adkBackendUrl);
+
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('ADK Backend URL'),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: CupertinoTextField(
+            controller: controller,
+            placeholder: 'http://localhost:8000',
+            autocorrect: false,
+          ),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: const Text('Save'),
+            onPressed: () {
+              settings.setAdkBackendUrl(controller.text);
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showBaseUrlDialog(BuildContext context, SettingsProvider settings) {
     final controller = TextEditingController(text: settings.featherlessBaseUrl);
 
@@ -1132,6 +1085,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         builder: (ctx) => CupertinoPageScaffold(
           backgroundColor: isDark ? AppTheme.bgDark : AppTheme.bgLightSecondary,
           navigationBar: CupertinoNavigationBar(
+            transitionBetweenRoutes: false,
             backgroundColor: isDark ? AppTheme.bgDarkSecondary : AppTheme.bgLight,
             border: Border(
               bottom: BorderSide(

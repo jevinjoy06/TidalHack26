@@ -1,0 +1,46 @@
+"""Local tools that call the Flutter bridge at http://127.0.0.1:8765/execute."""
+import os
+import json
+import httpx
+
+BRIDGE_URL = os.getenv("JARVIS_BRIDGE_URL", "http://127.0.0.1:8765")
+
+
+def _call_bridge(tool: str, args: dict) -> str:
+    """POST to Flutter bridge and return result."""
+    try:
+        with httpx.Client(timeout=15) as client:
+            resp = client.post(
+                f"{BRIDGE_URL}/execute",
+                json={"tool": tool, "args": args},
+            )
+        if resp.status_code != 200:
+            return f"Error: Bridge returned {resp.status_code}"
+        data = resp.json()
+        return data.get("result", str(data))
+    except httpx.ConnectError:
+        return "Error: Flutter local bridge not reachable. Start the JARVIS app first."
+    except Exception as e:
+        return f"Error: {e}"
+
+
+def open_url(url: str) -> dict:
+    """Open a URL in the default browser."""
+    if not url or not url.strip():
+        return {"result": "Error: url is required"}
+    result = _call_bridge("open_url", {"url": url})
+    return {"result": result}
+
+
+def send_email(to: str, subject: str = "", body: str = "") -> dict:
+    """Open mail client with pre-filled email."""
+    if not to or not to.strip():
+        return {"result": "Error: 'to' is required"}
+    result = _call_bridge("send_email", {"to": to, "subject": subject or "", "body": body or ""})
+    return {"result": result}
+
+
+def read_calendar(query: str = "events this week") -> dict:
+    """Read calendar events. Query e.g. 'next Thursday', 'events this week'."""
+    result = _call_bridge("read_calendar", {"query": query or "events this week"})
+    return {"result": result}

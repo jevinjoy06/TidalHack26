@@ -85,4 +85,9 @@ class Secrets {
   static String get baseUrl => featherlessBaseUrl;
   
   static String get model => defaultModel;
+
+  static String get serpApiKey => dotenv.env['SERPAPI_KEY'] ?? '';
+  static String get tavilyApiKey => dotenv.env['TAVILY_API_KEY'] ?? '';
+  static String get googleClientId => dotenv.env['GOOGLE_CLIENT_ID'] ?? '';
+  static String get googleClientSecret => dotenv.env['GOOGLE_CLIENT_SECRET'] ?? '';
 }
