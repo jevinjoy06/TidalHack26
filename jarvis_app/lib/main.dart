@@ -24,10 +24,10 @@ Future<void> main() async {
 
   registerAllTools();
 
-  // Set system UI overlay style
+  // Figma design is dark; use dark status bar when app uses dark theme
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
-      statusBarBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
     ),
   );
   
@@ -75,7 +75,7 @@ class JarvisApp extends StatelessWidget {
             home: Container(
               decoration: BoxDecoration(
                 gradient: isDark ? AppTheme.darkGradient : null,
-                color: isDark ? null : AppTheme.bgLightSecondary,
+                color: isDark ? AppTheme.figmaBackground : AppTheme.bgLightSecondary,
               ),
               child: const HomeScreen(),
             ),

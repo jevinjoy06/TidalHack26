@@ -168,21 +168,25 @@ class FeatherlessService {
 
     try {
       // Use /models endpoint for lightweight connection test
-      final endpoint = _baseUrl.endsWith('/v1') 
-          ? '$_baseUrl/models' 
+      final endpoint = _baseUrl.endsWith('/v1')
+          ? '$_baseUrl/models'
           : '$_baseUrl/v1/models';
-      
+
+      final stopwatch = Stopwatch()..start();
       final response = await _client.get(
         Uri.parse(endpoint),
         headers: {
           'Authorization': 'Bearer $_apiKey',
         },
       ).timeout(const Duration(seconds: 5));
+      stopwatch.stop();
+      final latencyMs = stopwatch.elapsedMilliseconds;
 
       if (response.statusCode == 200) {
         return {
           'status': ConnectionStatus.connected,
           'error': null,
+          'latencyMs': latencyMs,
         };
       } else if (response.statusCode == 401) {
         return {

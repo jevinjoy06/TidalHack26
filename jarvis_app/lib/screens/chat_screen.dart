@@ -14,6 +14,7 @@ import '../widgets/message_bubble.dart';
 import '../widgets/typing_indicator.dart';
 import '../widgets/voice_mode_widget.dart';
 import '../widgets/chat_sidebar.dart';
+import '../widgets/hud_background.dart';
 
 enum SidebarState { hidden, minimized, expanded }
 
@@ -179,80 +180,38 @@ class _ChatScreenState extends State<ChatScreen> {
                     onMinimize: _minimizeSidebar,
                   ),
 
-          // Main content area
+          // Main content area (Figma: HUD + top bar + content + input bar)
           Expanded(
-            child: Column(
-              children: [
-                // Small Type/Voice toggle pill at top
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: isDark ? AppTheme.bgDarkSecondary : AppTheme.bgLightSecondary,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isDark ? AppTheme.borderDark : AppTheme.borderLight,
-                        width: 1,
-                      ),
-                    ),
-                    child: CupertinoSlidingSegmentedControl<int>(
-                      groupValue: _selectedMode,
-                      backgroundColor: Colors.transparent,
-                      thumbColor: isDark ? AppTheme.bgDarkTertiary : AppTheme.bgLight,
-                      onValueChanged: (value) {
-                        if (value != null) {
-                          HapticFeedback.selectionClick();
-                          setState(() {
-                            _selectedMode = value;
-                          });
-                        }
-                      },
-                      children: {
-                        0: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                          child: Text(
-                            'Type',
-                            style: TextStyle(
-                              color: _selectedMode == 0 
-                                  ? (isDark ? AppTheme.textPrimary : AppTheme.textDark)
-                                  : (isDark ? AppTheme.textTertiary : AppTheme.textDarkSecondary),
-                              fontWeight: _selectedMode == 0 ? FontWeight.w600 : FontWeight.w400,
-                            ),
+            child: _selectedMode == 0
+                ? Consumer<ChatProvider>(
+                    builder: (context, provider, _) {
+                      return Stack(
+                        children: [
+                          // HUD background (Figma)
+                          if (provider.messages.isEmpty)
+                            const Positioned.fill(child: HudBackground()),
+                          Column(
+                            children: [
+                              // Top bar: Voice Mode button + user avatar (Figma)
+                              _buildTopBar(isDark),
+                              // Content
+                              Expanded(
+                                child: provider.messages.isEmpty
+                                    ? _buildEmptyStateWithInput(context, isDark)
+                                    : _buildChatWithInput(context, provider, isDark),
+                              ),
+                              // Bottom input bar (Figma style) - only in type mode empty state or when messages
+                              if (provider.messages.isNotEmpty)
+                                _buildBottomInputBar(context, isDark)
+                              else
+                                _buildWelcomeInputBar(context, isDark),
+                            ],
                           ),
-                        ),
-                        1: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                          child: Text(
-                            'Voice',
-                            style: TextStyle(
-                              color: _selectedMode == 1 
-                                  ? (isDark ? AppTheme.textPrimary : AppTheme.textDark)
-                                  : (isDark ? AppTheme.textTertiary : AppTheme.textDarkSecondary),
-                              fontWeight: _selectedMode == 1 ? FontWeight.w600 : FontWeight.w400,
-                            ),
-                          ),
-                        ),
-                      },
-                    ),
-                  ),
-                ),
-
-                // Content area
-                Expanded(
-                  child: _selectedMode == 0
-                      ? Consumer<ChatProvider>(
-                          builder: (context, provider, _) {
-                            if (provider.messages.isEmpty) {
-                              return _buildEmptyStateWithInput(context, isDark);
-                            }
-                            return _buildChatWithInput(context, provider, isDark);
-                          },
-                        )
-                      : const VoiceModeWidget(),
-                ),
-              ],
-            ),
+                        ],
+                      );
+                    },
+                  )
+                : const VoiceModeWidget(),
           ),
         ],
       ),
@@ -351,86 +310,101 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  static const _promptCards = [
+    'Summarize my latest messages',
+    'Draft a reply in a friendly tone',
+    'Turn this into tasks',
+    'Plan my day',
+    'Extract action items',
+    'Find key dates',
+  ];
+
   Widget _buildEmptyStateWithInput(BuildContext context, bool isDark) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: isDark ? AppTheme.darkGradient : null,
-        color: isDark ? null : AppTheme.bgLightSecondary,
-      ),
-      child: SingleChildScrollView(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minHeight: MediaQuery.of(context).size.height,
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 700),
+    final fg = isDark ? AppTheme.figmaForeground : AppTheme.textDark;
+    final muted = isDark ? AppTheme.figmaMutedForeground : AppTheme.textDarkSecondary;
+
+    return SingleChildScrollView(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          minHeight: MediaQuery.of(context).size.height - 200,
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1152),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-              // JARVIS branding with gradient + float animation
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primaryPurple.withOpacity(0.4),
-                      blurRadius: 20,
-                      spreadRadius: 2,
+                  // Title with gradient (Figma: "Welcome to JARVIS")
+                  ShaderMask(
+                    blendMode: BlendMode.srcIn,
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: [
+                        AppTheme.figmaForeground,
+                        AppTheme.figmaAccent,
+                        AppTheme.figmaSecondary,
+                      ],
+                    ).createShader(bounds),
+                    child: Text(
+                      'Welcome to JARVIS',
+                      style: TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        letterSpacing: -0.5,
+                      ),
                     ),
-                  ],
-                ),
-                child: const Icon(
-                  CupertinoIcons.sparkles,
-                  size: 50,
-                  color: CupertinoColors.white,
-                ),
-              )
-                  .animate()
-                  .fadeIn(duration: 400.ms, curve: Curves.easeOut)
-                  .scaleXY(begin: 0.6, end: 1.0, duration: 500.ms, curve: Curves.easeOut)
-                  .then()
-                  .animate(onPlay: (c) => c.repeat(reverse: true))
-                  .moveY(begin: 0, end: -5, duration: 3000.ms, curve: Curves.easeInOut),
-              const SizedBox(height: 32),
-              Text(
-                'Hello, I\'m JARVIS',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? AppTheme.textPrimary : AppTheme.textDark,
-                  letterSpacing: -0.5,
-                ),
-              )
-                  .animate(delay: 150.ms)
-                  .fadeIn(duration: 350.ms, curve: Curves.easeOut)
-                  .slideY(begin: 0.1, end: 0, duration: 350.ms, curve: Curves.easeOut),
-              const SizedBox(height: 12),
-              Text(
-                'Your AI-powered assistant',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: isDark ? AppTheme.textSecondary : AppTheme.textDarkSecondary,
-                  fontWeight: FontWeight.w400,
-                ),
-              )
-                  .animate(delay: 250.ms)
-                  .fadeIn(duration: 350.ms, curve: Curves.easeOut)
-                  .slideY(begin: 0.1, end: 0, duration: 350.ms, curve: Curves.easeOut),
-              const SizedBox(height: 48),
-              _buildSuggestionChips(isDark),
-              const SizedBox(height: 48),
-              // Centered input box
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: _buildCompactInputArea(context, isDark),
-              )
-                  .animate(delay: 500.ms)
-                  .fadeIn(duration: 400.ms, curve: Curves.easeOut)
-                  .slideY(begin: 0.08, end: 0, duration: 400.ms, curve: Curves.easeOut),
+                  )
+                      .animate()
+                      .fadeIn(duration: 400.ms, curve: Curves.easeOut)
+                      .slideY(begin: 0.05, end: 0, duration: 400.ms, curve: Curves.easeOut),
+                  const SizedBox(height: 12),
+                  Container(
+                    height: 1,
+                    width: 256,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.transparent,
+                          AppTheme.figmaAccent.withOpacity(0.5),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Your personal command center for chat, tasks, and automation.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: muted,
+                      height: 1.5,
+                    ),
+                  )
+                      .animate(delay: 100.ms)
+                      .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+                      .slideY(begin: 0.05, end: 0, duration: 350.ms, curve: Curves.easeOut),
+                  const SizedBox(height: 48),
+                  // 2x3 prompt cards (Figma)
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    alignment: WrapAlignment.center,
+                    children: List.generate(_promptCards.length, (i) {
+                      return SizedBox(
+                        width: 220,
+                        child: _buildPromptCard(
+                          _promptCards[i],
+                          isDark,
+                          fg,
+                          muted,
+                          i,
+                        ),
+                      );
+                    }),
+                  ),
                 ],
               ),
             ),
@@ -440,131 +414,194 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildChatWithInput(BuildContext context, ChatProvider provider, bool isDark) {
-    // Get bottom padding to account for tab bar
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-
-    return Column(
-      children: [
-        // Messages
-        Expanded(
-          child: ListView.builder(
-            controller: _scrollController,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 8,
-            ),
-            itemCount: provider.messages.length + (provider.isLoading ? 1 : 0),
-            itemBuilder: (context, index) {
-              if (index == provider.messages.length && provider.isLoading) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: TypingIndicator(),
-                );
-              }
-
-              final message = provider.messages[index];
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: MessageBubble(message: message),
-              )
-                  .animate()
-                  .fadeIn(duration: 300.ms, curve: Curves.easeOut)
-                  .slideX(
-                    begin: message.role == MessageRole.user ? 0.05 : -0.05,
-                    end: 0,
-                    duration: 300.ms,
-                    curve: Curves.easeOut,
-                  );
-            },
+  Widget _buildPromptCard(String text, bool isDark, Color fg, Color muted, int index) {
+    return CupertinoButton(
+      padding: EdgeInsets.zero,
+      onPressed: () {
+        _textController.text = text;
+        _sendMessage(context.read<ChatProvider>());
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isDark ? AppTheme.figmaCard.withOpacity(0.4) : AppTheme.bgLight,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDark ? AppTheme.figmaBorder : AppTheme.borderLight,
+            width: 1,
           ),
         ),
-        // Bottom input area (centered, smaller width) - lifted above tab bar
-        Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 700),
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottomPadding + 50),
-              child: _buildCompactInputArea(context, isDark),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSuggestionChips(bool isDark) {
-    final suggestions = [
-      'Check my email',
-      'What are my tasks?',
-      'Play some music',
-      'Search the web',
-    ];
-
-    return Wrap(
-      spacing: 12,
-      runSpacing: 12,
-      alignment: WrapAlignment.center,
-      children: suggestions.asMap().entries.map((entry) {
-        final index = entry.key;
-        final text = entry.value;
-        return GestureDetector(
-          onTap: () {
-            _textController.text = text;
-            _sendMessage(context.read<ChatProvider>());
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: AppTheme.cardDecoration(isDark),
-            child: Text(
-              text,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: isDark ? AppTheme.textPrimary : AppTheme.textDark,
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontSize: 14,
+                  color: fg,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
+            Icon(
+              CupertinoIcons.arrow_right,
+              size: 16,
+              color: muted,
+            ),
+          ],
+        ),
+      ),
+    )
+        .animate(delay: Duration(milliseconds: 150 + index * 60))
+        .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+        .slideY(begin: 0.05, end: 0, duration: 350.ms, curve: Curves.easeOut);
+  }
+
+  Widget _buildTopBar(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      decoration: BoxDecoration(
+        color: (isDark ? AppTheme.bgDark : AppTheme.bgLight).withOpacity(0.8),
+        border: Border(
+          bottom: BorderSide(
+            color: (isDark ? AppTheme.figmaBorder : AppTheme.borderLight).withOpacity(0.5),
+            width: 1,
           ),
-        )
-            .animate(delay: Duration(milliseconds: 300 + index * 80))
-            .fadeIn(duration: 350.ms, curve: Curves.easeOut)
-            .scaleXY(begin: 0.9, end: 1.0, duration: 350.ms, curve: Curves.easeOut);
-      }).toList(),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              gradient: AppTheme.primaryGradient,
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [
+                BoxShadow(
+                  color: AppTheme.figmaAccent.withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: const Icon(
+              CupertinoIcons.person_fill,
+              size: 18,
+              color: CupertinoColors.white,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildCompactInputArea(BuildContext context, bool isDark) {
+  Widget _buildChatWithInput(BuildContext context, ChatProvider provider, bool isDark) {
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+      itemCount: provider.messages.length + (provider.isLoading ? 1 : 0),
+      itemBuilder: (context, index) {
+        if (index == provider.messages.length && provider.isLoading) {
+          return const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: TypingIndicator(),
+          );
+        }
+        final message = provider.messages[index];
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: MessageBubble(message: message),
+        )
+            .animate()
+            .fadeIn(duration: 300.ms, curve: Curves.easeOut)
+            .slideX(
+              begin: message.role == MessageRole.user ? 0.05 : -0.05,
+              end: 0,
+              duration: 300.ms,
+              curve: Curves.easeOut,
+            );
+      },
+    );
+  }
+
+  Widget _buildWelcomeInputBar(BuildContext context, bool isDark) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
     return Container(
-      decoration: AppTheme.inputDecoration(isDark).copyWith(
+      padding: EdgeInsets.fromLTRB(24, 16, 24, 16 + bottomPadding),
+      decoration: BoxDecoration(
+        color: (isDark ? AppTheme.bgDark : AppTheme.bgLight).withOpacity(0.8),
+        border: Border(
+          top: BorderSide(
+            color: (isDark ? AppTheme.figmaBorder : AppTheme.borderLight).withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 896),
+          child: _buildFigmaInputBar(context, isDark),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomInputBar(BuildContext context, bool isDark) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    return Container(
+      padding: EdgeInsets.fromLTRB(24, 16, 24, 16 + bottomPadding),
+      decoration: BoxDecoration(
+        color: (isDark ? AppTheme.bgDark : AppTheme.bgLight).withOpacity(0.8),
+        border: Border(
+          top: BorderSide(
+            color: (isDark ? AppTheme.figmaBorder : AppTheme.borderLight).withOpacity(0.5),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 896),
+          child: _buildFigmaInputBar(context, isDark),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFigmaInputBar(BuildContext context, bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.figmaCard.withOpacity(0.6) : AppTheme.bgLight,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? AppTheme.figmaBorder : AppTheme.borderLight,
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: isDark 
-                ? Colors.black.withOpacity(0.3)
-                : Colors.black.withOpacity(0.08),
-            blurRadius: 12,
+            color: AppTheme.figmaAccent.withOpacity(0.05),
+            blurRadius: 16,
             offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Row(
         children: [
-          // Text input
           Expanded(
             child: CupertinoTextField(
               controller: _textController,
               focusNode: _focusNode,
-              placeholder: 'Ask JARVIS anything...',
+              placeholder: 'Ask JARVIS anything…',
               placeholderStyle: TextStyle(
-                color: isDark ? AppTheme.textTertiary : AppTheme.textDarkSecondary,
+                color: isDark ? AppTheme.figmaMutedForeground : AppTheme.textDarkSecondary,
               ),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 20,
-                vertical: 16,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: const BoxDecoration(),
               style: TextStyle(
-                color: isDark ? AppTheme.textPrimary : AppTheme.textDark,
-                fontSize: 16,
+                color: isDark ? AppTheme.figmaForeground : AppTheme.textDark,
+                fontSize: 15,
               ),
               maxLines: 4,
               minLines: 1,
@@ -572,43 +609,69 @@ class _ChatScreenState extends State<ChatScreen> {
               onSubmitted: (_) => _sendMessage(context.read<ChatProvider>()),
             ),
           ),
-
-          // Send button
+          CupertinoButton(
+            padding: const EdgeInsets.all(10),
+            minSize: 0,
+            onPressed: () {
+              setState(() => _selectedMode = 1);
+            },
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: isDark ? AppTheme.figmaMuted.withOpacity(0.5) : AppTheme.bgLightTertiary,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                CupertinoIcons.mic_fill,
+                size: 18,
+                color: isDark ? AppTheme.figmaMutedForeground : AppTheme.textDarkSecondary,
+              ),
+            ),
+          ),
           Consumer<ChatProvider>(
             builder: (context, provider, _) {
-              return Container(
-                margin: const EdgeInsets.only(right: 8),
-                child: CupertinoButton(
-                  padding: EdgeInsets.zero,
-                  minSize: 0,
-                  onPressed: provider.isLoading
-                      ? null
-                      : () => _sendMessage(provider),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: provider.isLoading
-                        ? BoxDecoration(
-                            color: isDark ? AppTheme.bgDarkTertiary : AppTheme.bgLightTertiary,
-                            borderRadius: BorderRadius.circular(10),
-                          )
-                        : AppTheme.buttonDecoration(isDark, isPrimary: true),
-                    child: Icon(
-                      CupertinoIcons.arrow_up,
-                      size: 20,
-                      color: provider.isLoading
-                          ? (isDark ? AppTheme.textTertiary : AppTheme.textDarkSecondary)
-                          : CupertinoColors.white,
-                    ),
+              return CupertinoButton(
+                padding: const EdgeInsets.all(10),
+                minSize: 0,
+                onPressed: provider.isLoading
+                    ? null
+                    : () => _sendMessage(provider),
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: provider.isLoading
+                        ? (isDark ? AppTheme.figmaMuted : AppTheme.bgLightTertiary)
+                        : AppTheme.figmaAccent,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: provider.isLoading
+                        ? null
+                        : [
+                            BoxShadow(
+                              color: AppTheme.figmaAccent.withOpacity(0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                  ),
+                  child: Icon(
+                    CupertinoIcons.arrow_up,
+                    size: 18,
+                    color: provider.isLoading
+                        ? (isDark ? AppTheme.figmaMutedForeground : AppTheme.textDarkSecondary)
+                        : CupertinoColors.white,
                   ),
                 ),
               );
             },
           ),
+          const SizedBox(width: 8),
         ],
       ),
     );
   }
+
 }
 
 

@@ -1,204 +1,204 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+/// Exact match to FigmaUI theme.css :root (dark design).
+/// All hex and opacity values from Figma.
 class AppTheme {
-  // TechHub-inspired color palette
-  // Maroon/red primary with clean light backgrounds
-  static const Color primaryMaroon = Color(0xFF8B0000); // Maroon
-  static const Color primaryRed = Color(0xFFDC143C); // Crimson
-  static const Color accentRed = Color(0xFFB22222); // Firebrick
-  static const Color darkMaroon = Color(0xFF5C0000); // Dark maroon
-  
-  // Light background colors (TechHub style)
+  // Figma theme.css :root
+  static const Color figmaBackground = Color(0xFF0A0A0F);
+  static const Color figmaForeground = Color(0xFFE5E5E7);
+  static const Color figmaCard = Color(0xFF16161D);
+  static const Color figmaCardForeground = Color(0xFFE5E5E7);
+  static const Color figmaMuted = Color(0xFF27272F);
+  static const Color figmaMutedForeground = Color(0xFFA1A1AA);
+  static const Color figmaAccent = Color(0xFFDC2626);
+  static const Color figmaAccentForeground = Color(0xFFFFFFFF);
+  static const Color figmaSecondary = Color(0xFF0EA5E9);
+  static const Color figmaSecondaryForeground = Color(0xFFFFFFFF);
+  static const Color figmaDestructive = Color(0xFFD4183D);
+  static const Color figmaSidebar = Color(0xFF12121A);
+  static const Color figmaSidebarAccent = Color(0xFF1C1C24);
+  static const Color figmaInputBackground = Color(0xFF1C1C24);
+  // border: rgba(255,255,255,0.1)
+  static const Color figmaBorder = Color(0x1AFFFFFF);
+  // sidebar-border: rgba(255,255,255,0.08)
+  static const Color figmaSidebarBorder = Color(0x14FFFFFF);
+  // radius 0.75rem = 12
+  static const double figmaRadius = 12.0;
+
+  // Aliases used across app (Figma-aligned)
+  static const Color primaryMaroon = figmaAccent;
+  static const Color primaryRed = figmaAccent;
+  static const Color accentRed = Color(0xFFB91C1C);
+  static const Color darkMaroon = Color(0xFF5C0000);
+
   static const Color bgLight = Color(0xFFFFFFFF);
-  static const Color bgLightSecondary = Color(0xFFF8F9FA); // Very light gray
-  static const Color bgLightTertiary = Color(0xFFE9ECEF); // Light gray
-  
-  // Dark background colors (for dark mode)
-  static const Color bgDark = Color(0xFF1A1A1A);
-  static const Color bgDarkSecondary = Color(0xFF2D2D2D);
-  static const Color bgDarkTertiary = Color(0xFF3A3A3A);
-  
-  // Text colors
-  static const Color textPrimary = Color(0xFF212529); // Almost black
-  static const Color textSecondary = Color(0xFF6C757D); // Gray
-  static const Color textTertiary = Color(0xFFADB5BD); // Light gray
-  static const Color textLight = Color(0xFFFFFFFF);
-  
-  // Aliases for compatibility
-  static const Color textDark = textPrimary;
-  static const Color textDarkSecondary = textSecondary;
-  static const Color systemGray = textTertiary;
-  static const Color primaryBlue = primaryMaroon; // Use maroon instead
-  static const Color primaryPurple = primaryMaroon; // Use maroon instead
-  static const Color accentGreen = success; // Use success green
-  
-  // Border colors
-  static const Color borderLight = Color(0xFFDEE2E6); // Light border
-  static const Color borderDark = Color(0xFF495057); // Dark border
-  
-  // Semantic colors
-  static const Color success = Color(0xFF28A745); // Green
-  static const Color warning = Color(0xFFFFC107); // Amber
-  static const Color error = Color(0xFFDC3545); // Red
-  static const Color info = Color(0xFF17A2B8); // Cyan
-  
-  // Gradient colors
+  static const Color bgLightSecondary = Color(0xFFF8F9FA);
+  static const Color bgLightTertiary = Color(0xFFE9ECEF);
+
+  static const Color bgDark = figmaBackground;
+  static const Color bgDarkSecondary = figmaSidebar;
+  static const Color bgDarkTertiary = figmaInputBackground;
+
+  static const Color textPrimary = figmaForeground;
+  static const Color textSecondary = figmaMutedForeground;
+  static const Color textTertiary = figmaMutedForeground;
+  static const Color textLight = figmaAccentForeground;
+
+  static const Color textDark = Color(0xFF212529);
+  static const Color textDarkSecondary = Color(0xFF6C757D);
+  static const Color systemGray = Color(0xFFADB5BD);
+  static const Color primaryBlue = figmaSecondary;
+  static const Color primaryPurple = figmaAccent;
+  static const Color accentGreen = success;
+
+  static const Color borderLight = Color(0xFFDEE2E6);
+  static const Color borderDark = figmaBorder;
+
+  static const Color success = Color(0xFF22C55E);
+  static const Color warning = Color(0xFFEAB308);
+  static const Color error = figmaAccent;
+  static const Color info = figmaSecondary;
+
   static const LinearGradient primaryGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [
-      primaryMaroon,
-      primaryRed,
-    ],
+    colors: [figmaAccent, Color(0xFFB91C1C)],
   );
-  
+
   static const LinearGradient darkGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [
-      bgDark,
-      bgDarkSecondary,
-    ],
+    colors: [figmaBackground, figmaCard],
   );
-  
+
   static const LinearGradient accentGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [
-      primaryRed,
-      accentRed,
-    ],
+    colors: [figmaAccent, figmaSecondary],
   );
 
   static CupertinoThemeData get lightTheme {
     return CupertinoThemeData(
       brightness: Brightness.light,
-      primaryColor: primaryMaroon,
-      primaryContrastingColor: CupertinoColors.white,
+      primaryColor: figmaAccent,
+      primaryContrastingColor: figmaAccentForeground,
       scaffoldBackgroundColor: bgLightSecondary,
       barBackgroundColor: bgLight,
       textTheme: const CupertinoTextThemeData(
-        primaryColor: textPrimary,
+        primaryColor: textDark,
         textStyle: TextStyle(
           fontFamily: 'Inter',
           fontSize: 16,
-          color: textPrimary,
+          color: textDark,
           fontWeight: FontWeight.w400,
           height: 1.5,
         ),
         navTitleTextStyle: TextStyle(
           fontFamily: 'Inter',
           fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: textPrimary,
+          fontWeight: FontWeight.w500,
+          color: textDark,
           letterSpacing: -0.3,
         ),
         navLargeTitleTextStyle: TextStyle(
           fontFamily: 'Inter',
           fontSize: 32,
           fontWeight: FontWeight.w700,
-          color: textPrimary,
+          color: textDark,
           letterSpacing: -0.5,
         ),
       ),
     );
   }
-  
+
+  /// Figma design theme (dark, theme.css :root).
   static CupertinoThemeData get darkTheme {
     return CupertinoThemeData(
       brightness: Brightness.dark,
-      primaryColor: primaryRed,
-      primaryContrastingColor: CupertinoColors.white,
-      scaffoldBackgroundColor: bgDark,
-      barBackgroundColor: bgDarkSecondary,
+      primaryColor: figmaAccent,
+      primaryContrastingColor: figmaAccentForeground,
+      scaffoldBackgroundColor: figmaBackground,
+      barBackgroundColor: figmaSidebar,
       textTheme: const CupertinoTextThemeData(
-        primaryColor: textLight,
+        primaryColor: figmaForeground,
         textStyle: TextStyle(
           fontFamily: 'Inter',
           fontSize: 16,
-          color: textLight,
+          color: figmaForeground,
           fontWeight: FontWeight.w400,
           height: 1.5,
         ),
         navTitleTextStyle: TextStyle(
           fontFamily: 'Inter',
           fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: textLight,
+          fontWeight: FontWeight.w500,
+          color: figmaForeground,
           letterSpacing: -0.3,
         ),
         navLargeTitleTextStyle: TextStyle(
           fontFamily: 'Inter',
           fontSize: 32,
           fontWeight: FontWeight.w700,
-          color: textLight,
+          color: figmaForeground,
           letterSpacing: -0.5,
         ),
       ),
     );
   }
-  
-  // Helper method for card styling (TechHub style - white cards on light background)
+
   static BoxDecoration cardDecoration(bool isDark) {
     return BoxDecoration(
-      color: isDark ? bgDarkSecondary : bgLight,
-      borderRadius: BorderRadius.circular(12),
+      color: isDark ? figmaCard : bgLight,
+      borderRadius: BorderRadius.circular(figmaRadius),
       border: Border.all(
-        color: isDark ? borderDark : borderLight,
+        color: isDark ? figmaBorder : borderLight,
         width: 1,
       ),
       boxShadow: [
         BoxShadow(
-          color: isDark 
-              ? Colors.black.withOpacity(0.3)
-              : Colors.black.withOpacity(0.05),
+          color: isDark ? Colors.black.withOpacity(0.3) : Colors.black.withOpacity(0.05),
           blurRadius: 8,
           offset: const Offset(0, 2),
         ),
       ],
     );
   }
-  
-  // Helper method for button styling
+
   static BoxDecoration buttonDecoration(bool isDark, {bool isPrimary = true}) {
     return BoxDecoration(
       gradient: isPrimary ? primaryGradient : null,
-      color: isPrimary ? null : (isDark ? bgDarkSecondary : bgLightSecondary),
-      borderRadius: BorderRadius.circular(8),
-      border: isPrimary ? null : Border.all(
-        color: isDark ? borderDark : borderLight,
-        width: 1,
-      ),
-      boxShadow: isPrimary ? [
-        BoxShadow(
-          color: primaryMaroon.withOpacity(0.3),
-          blurRadius: 8,
-          offset: const Offset(0, 2),
-        ),
-      ] : null,
+      color: isPrimary ? null : (isDark ? figmaSidebarAccent : bgLightSecondary),
+      borderRadius: BorderRadius.circular(figmaRadius - 4),
+      border: isPrimary ? null : Border.all(color: isDark ? figmaBorder : borderLight, width: 1),
+      boxShadow: isPrimary
+          ? [
+              BoxShadow(
+                color: figmaAccent.withOpacity(0.2),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ]
+          : null,
     );
   }
-  
-  // Helper method for input field styling
+
   static BoxDecoration inputDecoration(bool isDark) {
     return BoxDecoration(
-      color: isDark ? bgDarkSecondary : bgLight,
-      borderRadius: BorderRadius.circular(12),
+      color: isDark ? figmaInputBackground : bgLight,
+      borderRadius: BorderRadius.circular(figmaRadius),
       border: Border.all(
-        color: isDark ? borderDark : borderLight,
-        width: 1.5,
+        color: isDark ? figmaBorder : borderLight,
+        width: 1,
       ),
     );
   }
-  
-  // Helper method for sidebar item styling (TechHub maroon highlight)
+
   static BoxDecoration sidebarItemDecoration(bool isSelected, bool isDark) {
     return BoxDecoration(
-      color: isSelected 
-          ? (isDark ? primaryMaroon.withOpacity(0.2) : primaryMaroon)
-          : Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
+      color: isSelected ? (isDark ? figmaAccent.withOpacity(0.2) : figmaAccent) : Colors.transparent,
+      borderRadius: BorderRadius.circular(figmaRadius - 4),
+      border: isSelected && isDark ? Border.all(color: figmaAccent.withOpacity(0.3), width: 1) : null,
     );
   }
 }

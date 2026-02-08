@@ -5,7 +5,7 @@ import '../models/connection_status.dart';
 import '../services/featherless_service.dart';
 
 class SettingsProvider extends ChangeNotifier {
-  bool _isDarkMode = false;
+  bool _isDarkMode = true; // Figma design is dark; default to match
   String _apiKey = '';
   String _selectedApiKeyName = '';
   Map<String, String> _apiKeyMap = {};
@@ -15,6 +15,7 @@ class SettingsProvider extends ChangeNotifier {
   bool _soundEnabled = true;
   ConnectionStatus _connectionStatus = ConnectionStatus.disconnected;
   String? _connectionError;
+  int? _lastLatencyMs;
   Function(String)? _onApiKeyChanged;
   Function(String)? _onModelChanged;
   Function(String)? _onBaseUrlChanged;
@@ -30,7 +31,9 @@ class SettingsProvider extends ChangeNotifier {
   bool get soundEnabled => _soundEnabled;
   ConnectionStatus get connectionStatus => _connectionStatus;
   String? get connectionError => _connectionError;
-  
+  /// Last measured round-trip latency in ms (from connection test). Null if never measured.
+  int? get lastLatencyMs => _lastLatencyMs;
+
   void setApiKeyCallback(Function(String) callback) {
     _onApiKeyChanged = callback;
   }
@@ -175,16 +178,16 @@ class SettingsProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Import FeatherlessService to test connection
       final service = FeatherlessService(
         apiKey: _apiKey,
         baseUrl: _featherlessBaseUrl,
         model: _model,
       );
-      
+
       final result = await service.verifyConnection();
       _connectionStatus = result['status'] as ConnectionStatus;
       _connectionError = result['error'] as String?;
+      _lastLatencyMs = result['latencyMs'] as int?;
     } catch (e) {
       _connectionStatus = ConnectionStatus.networkError;
       _connectionError = 'Failed to test connection: $e';
