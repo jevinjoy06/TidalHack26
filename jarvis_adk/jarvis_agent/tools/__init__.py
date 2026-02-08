@@ -10,7 +10,6 @@ from .ili_tools import (
     ili_growth_rates,
     ili_query,
 )
-from .screenshot_website import screenshot_website
 
 __all__ = [
     "shopping_search",
@@ -27,5 +26,4 @@ __all__ = [
     "ili_match_anomalies",
     "ili_growth_rates",
     "ili_query",
-    "screenshot_website",
 ]

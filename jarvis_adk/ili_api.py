@@ -25,6 +25,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from jarvis_agent.tools.ili_processing import get_dataset, reset_dataset
 from jarvis_agent.tools.ili_clustering import cluster_anomalies
 from jarvis_agent.tools.ili_llm_prediction import predict_growth, predict_new_anomalies, risk_assessment
+from jarvis_agent.tools.ili_ml_new_anomaly import predict_new_anomaly_locations
 
 app = FastAPI(title="JARVIS ILI API", version="1.0.0")
 
@@ -265,37 +266,30 @@ def predict_new_anomalies_endpoint(
     year: int = Query(2022),
     start_dist: float = Query(0),
     end_dist: float = Query(5000),
-    api_key: str = Query(""),
-    model: str = Query("Qwen/Qwen2.5-14B-Instruct"),
-    base_url: str = Query("https://api.featherless.ai/v1"),
+    top_n: int = Query(5),
 ):
-    """Predict locations where new corrosion is likely to form using LLM.
-    
+    """Predict locations where new corrosion is likely to form using ML scoring.
+
     Args:
         year: Recent inspection year
         start_dist, end_dist: Pipeline segment to analyze (ft)
-        api_key: Featherless.ai API key
-        model: LLM model name
-        base_url: Featherless.ai base URL
-        
+        top_n: Number of top predictions to return
+
     Returns:
         List of predictions: [{predicted_dist, risk_score, explanation}]
     """
     ds = get_dataset()
     if not ds.runs:
         ds.load(_DEFAULT_FILE)
-    # Ensure references/anomalies populated; reset and reload if incomplete
-    if year not in ds.references or year not in ds.anomalies:
-        reset_dataset()
-        ds = get_dataset()
-        ds.load(_DEFAULT_FILE)
     if not ds.matches:
         ds.align_welds()
         ds.match_anomalies()
+    if not ds.growth:
+        ds.calculate_growth()
 
     if year not in ds.anomalies:
         return {"error": f"No data for year {year}"}
-    
+
     # Get new anomalies (unmatched in later run)
     new_anoms = pd.DataFrame()
     for (y1, y2), matches_df in ds.matches.items():
@@ -304,15 +298,23 @@ def predict_new_anomalies_endpoint(
             used = set(matches_df["y2_idx"].tolist())
             new_anoms = ml2[~ml2.index.isin(used)]
             break
-    
+
+    # Get growth data for the most recent pair
+    growth_df = None
+    for (y1, y2), gdf in ds.growth.items():
+        if y2 == year:
+            growth_df = gdf
+            break
+
     anomalies = ds.anomalies[year]
     refs = ds.references.get(year, pd.DataFrame())
     welds = refs[refs["event"].str.lower().str.contains("weld")] if len(refs) > 0 else pd.DataFrame()
-    
-    predictions = predict_new_anomalies(
+
+    predictions = predict_new_anomaly_locations(
         anomalies, new_anoms, welds,
         start_dist, end_dist,
-        api_key, model, base_url
+        growth_df=growth_df,
+        top_n=top_n,
     )
     return _clean(predictions)
 

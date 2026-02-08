@@ -191,6 +191,7 @@ class IliProvider extends ChangeNotifier {
 
   Future<void> loadNewAnomalyPredictions(int year, double startDist, double endDist, {int topN = 5}) async {
     _newAnomalyError = null;
+    notifyListeners();
     try {
       final uri = Uri.parse('$_apiBaseUrl/ili/predict-new-anomalies')
           .replace(queryParameters: {
@@ -199,7 +200,7 @@ class IliProvider extends ChangeNotifier {
         'end_dist': endDist.toString(),
         'top_n': topN.toString(),
       });
-      final response = await http.get(uri).timeout(const Duration(seconds: 60));
+      final response = await http.get(uri).timeout(const Duration(minutes: 5));
 
       if (response.statusCode == 200) {
         final decoded = json.decode(response.body);

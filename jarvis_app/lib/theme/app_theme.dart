@@ -192,9 +192,7 @@ class AppTheme {
         width: 1,
       ),
     );
-  }
-
-  static BoxDecoration sidebarItemDecoration(bool isSelected, bool isDark) {
+  }  static BoxDecoration sidebarItemDecoration(bool isSelected, bool isDark) {
     return BoxDecoration(
       color: isSelected ? (isDark ? figmaAccent.withOpacity(0.2) : figmaAccent) : Colors.transparent,
       borderRadius: BorderRadius.circular(figmaRadius - 4),

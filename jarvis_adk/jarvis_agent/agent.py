@@ -40,7 +40,6 @@ from .tools import (
     ili_match_anomalies,
     ili_growth_rates,
     ili_query,
-    screenshot_website,
 )
 
 JARVIS_INSTRUCTION = """You are JARVIS, a helpful AI assistant that can run tasks on the user's computer.
@@ -101,7 +100,6 @@ def _get_tools():
         ili_match_anomalies,
         ili_growth_rates,
         ili_query,
-        screenshot_website,
     ]
 
 
