@@ -111,6 +111,7 @@ Future<String> createGoogleDocExecutor(Map<String, dynamic> args) async {
 const List<String> _googleScopes = [
   'https://www.googleapis.com/auth/documents',
   'https://www.googleapis.com/auth/gmail.send',
+  'https://www.googleapis.com/auth/gmail.readonly',
 ];
 
 GoogleSignIn? _googleSignIn;

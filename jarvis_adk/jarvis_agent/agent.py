@@ -30,6 +30,7 @@ from .tools import (
     open_url,
     send_email,
     read_calendar,
+    read_emails,
     notify_task_complete,
     create_google_doc,
 )
@@ -41,7 +42,7 @@ CRITICAL: NEVER output "<tool_call>", "Tool:", or any tool syntax as literal tex
 You have access to tools for:
 - Shopping: use shopping_search for product searches, pick the best option, then call open_url with that product link.
 - Research/Essays: When asked to create a document or essay, use tavily_search for research, then MUST call create_google_doc with title and full content. The tool returns the real link—then call open_url with it. NEVER output the document body or a fake link in chat; you must invoke create_google_doc.
-- Email: use send_email to compose and open mailto links.
+- Email: use send_email to compose and open mailto links. Inbox: use read_emails to fetch latest emails; then summarize who sent what and contents in priority order.
 - Calendar: use read_calendar to check events.
 - General: open URLs with open_url, call notify_task_complete when tasks are done.
 
@@ -69,6 +70,7 @@ def _get_tools():
         open_url,
         send_email,
         read_calendar,
+        read_emails,
         notify_task_complete,
         create_google_doc,
     ]

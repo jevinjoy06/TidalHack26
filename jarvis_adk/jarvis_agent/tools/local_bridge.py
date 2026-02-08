@@ -65,3 +65,9 @@ def read_calendar(query: str = "events this week") -> dict:
     """Read calendar events. Query e.g. 'next Thursday', 'events this week'."""
     result = _call_bridge("read_calendar", {"query": query or "events this week"})
     return {"result": result}
+
+
+def read_emails(max_results: int = 15, unread_only: bool = False) -> dict:
+    """Fetch the user's latest Gmail emails; returns sender, subject, and snippet in priority order."""
+    result = _call_bridge("read_emails", {"max_results": max_results, "unread_only": unread_only})
+    return {"result": result}

@@ -7,6 +7,7 @@ import 'shopping_search_tool.dart';
 import 'tavily_search_tool.dart';
 import 'google_docs_tool.dart';
 import 'read_calendar_tool.dart';
+import 'read_emails_tool.dart';
 import 'notify_task_complete_tool.dart';
 
 void registerAllTools() {
@@ -18,5 +19,6 @@ void registerAllTools() {
   registerTavilySearchTool(registry);
   registerCreateGoogleDocTool(registry);
   registerReadCalendarTool(registry);
+  registerReadEmailsTool(registry);
   registerNotifyTaskCompleteTool(registry);
 }
