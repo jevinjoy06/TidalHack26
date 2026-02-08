@@ -231,9 +231,9 @@ def speech_friendly_dates(text: str) -> str:
     return out
 
 
-def run_adk(user_message: str) -> str:
-    # New session per request (like app's first message in a new chat) so model sees same context.
-    session_id = f"voice_{int(time.time() * 1000)}"
+def run_adk(user_message: str, call_sid: str | None = None) -> str:
+    # Use CallSid so all utterances in the same call share context; fallback to timestamp if missing.
+    session_id = f"voice_{call_sid}" if call_sid else f"voice_{int(time.time() * 1000)}"
     create_url = f"{ADK_URL}/apps/{ADK_APP_NAME}/users/{USER_ID}/sessions"
     body = {
         "appName": ADK_APP_NAME,
@@ -326,6 +326,7 @@ async def voice_incoming(request: Request):
 @app.post("/voice/gather")
 async def voice_gather(
     request: Request,
+    CallSid: str = Form(None),
     Caller: str = Form(None),
     SpeechResult: str = Form(None),
 ):
@@ -353,7 +354,7 @@ async def voice_gather(
             media_type="application/xml",
         )
     try:
-        reply = run_adk(transcript)
+        reply = run_adk(transcript, call_sid=CallSid)
     except Exception as e:
         reply = f"Sorry, an error occurred: {e}"
     reply = speech_friendly_dates(reply)
