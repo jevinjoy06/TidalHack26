@@ -31,6 +31,9 @@ class ChatProvider extends ChangeNotifier {
 
   final LocalBridgeServer _bridgeServer = LocalBridgeServer(port: 8765);
   String? _adkSessionId;
+  
+  /// Token to track current message send. Incremented when clearMessages is called.
+  int _sendToken = 0;
 
   void setAdkSettings(bool useAdk, String url) {
     _useAdkBackend = useAdk;
@@ -108,6 +111,9 @@ class ChatProvider extends ChangeNotifier {
   Future<void> sendMessage(String content) async {
     if (content.trim().isEmpty) return;
 
+    // Capture current token at start of send
+    final currentToken = _sendToken;
+
     final today = DateTime.now().toIso8601String().split('T')[0];
     final contentWithDate = '[Current date: $today.] $content';
 
@@ -128,25 +134,35 @@ class ChatProvider extends ChangeNotifier {
     try {
       if (_useAdkBackend && _adkBackendUrl.isNotEmpty) {
         try {
-          await _sendMessageViaAdk(contentWithDate);
+          await _sendMessageViaAdk(contentWithDate, currentToken);
         } on Exception catch (e) {
+          // Check if cancelled during exception handling
+          if (currentToken != _sendToken) return;
+          
           // If ADK backend is unreachable, fall back to orchestrator
           if (e.toString().contains('SocketException') ||
               e.toString().contains('Connection refused') ||
               e.toString().contains('refused the network connection')) {
             _agentStatus = 'ADK unavailable, using local agent...';
             notifyListeners();
-            await _sendMessageViaOrchestrator();
+            await _sendMessageViaOrchestrator(currentToken);
           } else {
             rethrow;
           }
         }
       } else {
-        await _sendMessageViaOrchestrator();
+        await _sendMessageViaOrchestrator(currentToken);
       }
+      
+      // Check if this send was cancelled while processing
+      if (currentToken != _sendToken) return;
+      
       _connectionStatus = ConnectionStatus.connected;
       _connectionError = null;
     } catch (e) {
+      // Check if cancelled during error
+      if (currentToken != _sendToken) return;
+      
       _error = e.toString();
       _agentStatus = null;
       _connectionStatus = ConnectionStatus.networkError;
@@ -161,13 +177,16 @@ class ChatProvider extends ChangeNotifier {
         error: e.toString(),
       ));
     } finally {
-      _isLoading = false;
-      _agentStatus = null;
-      notifyListeners();
+      // Only clear loading if this is still the current send
+      if (currentToken == _sendToken) {
+        _isLoading = false;
+        _agentStatus = null;
+        notifyListeners();
+      }
     }
   }
 
-  Future<void> _sendMessageViaAdk(String content) async {
+  Future<void> _sendMessageViaAdk(String content, int token) async {
     if (!_bridgeServer.isRunning) {
       await _bridgeServer.start();
     }
@@ -182,10 +201,15 @@ class ChatProvider extends ChangeNotifier {
       try {
         await adk.createSession(userId: userId, sessionId: _adkSessionId!);
       } catch (_) {
+        // Check if cancelled during session creation
+        if (token != _sendToken) return;
         _adkSessionId = DateTime.now().millisecondsSinceEpoch.toString();
         await adk.createSession(userId: userId, sessionId: _adkSessionId!);
       }
     }
+
+    // Check if cancelled before starting main work
+    if (token != _sendToken) return;
 
     _agentStatus = 'Thinking...';
     notifyListeners();
@@ -195,6 +219,9 @@ class ChatProvider extends ChangeNotifier {
       sessionId: _adkSessionId!,
       message: content,
     );
+
+    // Check if cancelled after ADK call
+    if (token != _sendToken) return;
 
     final toolName = AdkService.getCurrentToolFromEvents(events);
     if (toolName != null) {
@@ -207,6 +234,9 @@ class ChatProvider extends ChangeNotifier {
     final textToSanitize = rawText ?? fallback;
     final responseText = _sanitizeToolCallGarbage(textToSanitize);
 
+    // Final check before adding messages
+    if (token != _sendToken) return;
+
     _agentMessages.add({'role': 'assistant', 'content': responseText});
     _messages.add(Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -218,19 +248,26 @@ class ChatProvider extends ChangeNotifier {
     _agentStatus = null;
   }
 
-  Future<void> _sendMessageViaOrchestrator() async {
+  Future<void> _sendMessageViaOrchestrator(int token) async {
     final registry = ToolRegistry.global;
     final orchestrator = AgentOrchestrator(
       service: _service,
       tools: registry.getToolsForLLM(),
       executeTool: (name, args) => registry.execute(name, args),
       onStatus: (status) {
-        _agentStatus = status;
-        notifyListeners();
+        // Only update status if not cancelled
+        if (token == _sendToken) {
+          _agentStatus = status;
+          notifyListeners();
+        }
       },
       systemPrompt: _jarvisSystemPrompt,
     );
     final (responseText, updatedMessages) = await orchestrator.run(_agentMessages);
+    
+    // Check if cancelled after orchestrator run
+    if (token != _sendToken) return;
+    
     _agentMessages = updatedMessages;
 
     _messages.add(Message(
@@ -303,10 +340,14 @@ Be concise and helpful.''';
   static String get _jarvisSystemPrompt => _getJarvisSystemPrompt();
 
   void clearMessages() {
+    // Increment token to cancel any ongoing sends
+    _sendToken++;
+    
     _messages.clear();
     _agentMessages.clear();
     _agentStatus = null;
     _adkSessionId = null;
+    _isLoading = false;
     notifyListeners();
   }
 

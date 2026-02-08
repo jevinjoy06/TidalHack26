@@ -1,10 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'chat_screen.dart';
 import 'tasks_screen.dart';
 import 'ili_screen.dart';
 import 'settings_screen.dart';
 import '../theme/app_theme.dart';
+import '../providers/chat_provider.dart';
 
 /// Figma UI layout: left sidebar (280px) + main content.
 /// Sidebar: logo, New Chat, search (chat only), recent (chat only), bottom nav.
@@ -50,7 +52,8 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _onNavTap(int index) {
-    if (index == _currentIndex) return;
+    // Allow "New Chat" to work even when already on chat (index 0)
+    if (index == _currentIndex && index != 0) return;
     _animController.reset();
     setState(() => _currentIndex = index);
     _animController.forward();
@@ -160,7 +163,12 @@ class _HomeScreenState extends State<HomeScreen>
               width: double.infinity,
               child: CupertinoButton(
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                onPressed: () => _onNavTap(0),
+                onPressed: () {
+                  // Clear chat and switch to chat screen
+                  final chatProvider = Provider.of<ChatProvider>(context, listen: false);
+                  chatProvider.clearMessages();
+                  _onNavTap(0);
+                },
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 10),
                   decoration: BoxDecoration(
