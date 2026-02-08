@@ -264,9 +264,16 @@ class _HomeScreenState extends State<HomeScreen>
                 return ChatHistoryList(
                   history: historyProvider.history,
                   currentChatId: chatProvider.currentChatId,
+                  isLoadingMessage: chatProvider.isLoading,
                   onChatTap: (chatId) async {
+                    if (chatProvider.isLoading) return;
                     await historyProvider.loadChatById(chatId);
-                    _onNavTap(0); // Switch to chat screen
+                    if (_currentIndex == 0) {
+                      _animController.reset();
+                      _animController.forward();
+                    } else {
+                      _onNavTap(0);
+                    }
                   },
                   onChatDelete: (chatId) => historyProvider.deleteChat(chatId),
                   onChatRename: (chatId, newName) => historyProvider.renameChat(chatId, newName),

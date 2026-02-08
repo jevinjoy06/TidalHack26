@@ -7,6 +7,7 @@ import '../utils/time_formatter.dart';
 class ChatHistoryList extends StatelessWidget {
   final List<ChatHistoryItem> history;
   final String? currentChatId;
+  final bool isLoadingMessage;
   final Future<void> Function(String) onChatTap;
   final Function(String) onChatDelete;
   final Function(String, String) onChatRename;
@@ -15,6 +16,7 @@ class ChatHistoryList extends StatelessWidget {
     super.key,
     required this.history,
     this.currentChatId,
+    this.isLoadingMessage = false,
     required this.onChatTap,
     required this.onChatDelete,
     required this.onChatRename,
@@ -50,6 +52,7 @@ class ChatHistoryList extends StatelessWidget {
           item: item,
           isActive: isActive,
           isDark: isDark,
+          isDisabled: isLoadingMessage && !isActive,
           onTap: () => onChatTap(item.id),
           onDelete: () => _showDeleteConfirmation(context, item.id, isDark),
           onRename: () => _showRenameDialog(context, item.id, item.summary, isDark),
@@ -126,6 +129,7 @@ class _ChatHistoryItem extends StatelessWidget {
   final ChatHistoryItem item;
   final bool isActive;
   final bool isDark;
+  final bool isDisabled;
   final VoidCallback onTap;
   final VoidCallback onDelete;
   final VoidCallback onRename;
@@ -134,6 +138,7 @@ class _ChatHistoryItem extends StatelessWidget {
     required this.item,
     required this.isActive,
     required this.isDark,
+    this.isDisabled = false,
     required this.onTap,
     required this.onDelete,
     required this.onRename,
@@ -148,51 +153,54 @@ class _ChatHistoryItem extends StatelessWidget {
         ? AppTheme.figmaAccent.withOpacity(0.1) 
         : AppTheme.figmaAccent.withOpacity(0.05);
 
-    return GestureDetector(
-      onTap: onTap,
-      onLongPress: () => _showContextMenu(context),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 4),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: isActive ? hoverColor : bgColor,
-          borderRadius: BorderRadius.circular(8),
-          border: isActive
-              ? Border.all(color: AppTheme.figmaAccent.withOpacity(0.3), width: 1)
-              : null,
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.summary,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                      color: textFg,
+    return Opacity(
+      opacity: isDisabled ? 0.4 : 1.0,
+      child: GestureDetector(
+        onTap: isDisabled ? null : onTap,
+        onLongPress: isDisabled ? null : () => _showContextMenu(context),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isActive ? hoverColor : bgColor,
+            borderRadius: BorderRadius.circular(8),
+            border: isActive
+                ? Border.all(color: AppTheme.figmaAccent.withOpacity(0.3), width: 1)
+                : null,
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.summary,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: textFg,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    getRelativeTime(item.lastUpdated),
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: mutedFg,
+                    const SizedBox(height: 4),
+                    Text(
+                      getRelativeTime(item.lastUpdated),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: mutedFg,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            if (item.isLoading) ...[
-              const SizedBox(width: 8),
-              const CupertinoActivityIndicator(radius: 6),
+              if (item.isLoading) ...[
+                const SizedBox(width: 8),
+                const CupertinoActivityIndicator(radius: 6),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

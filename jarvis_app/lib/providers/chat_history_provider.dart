@@ -66,8 +66,6 @@ class ChatHistoryProvider extends ChangeNotifier {
 
   Future<void> saveChat(String id, List<Message> messages, {bool isLoading = false}) async {
     if (messages.isEmpty) return;
-
-    // Don't save if only user message and no response
     if (messages.length == 1 && !isLoading) return;
 
     // Get summary from first user message
@@ -81,11 +79,14 @@ class ChatHistoryProvider extends ChangeNotifier {
     }
 
     final existingIndex = _history.indexWhere((item) => item.id == id);
+    // Store a COPY of the messages list so history items are independent of ChatProvider._messages.
+    // Otherwise switching chats clears the shared list and corrupts previously saved chats.
+    final messagesCopy = List<Message>.from(messages);
     final chatItem = ChatHistoryItem(
       id: id,
       summary: summary,
       lastUpdated: DateTime.now(),
-      messages: messages,
+      messages: messagesCopy,
       isLoading: isLoading,
     );
 
@@ -123,7 +124,6 @@ class ChatHistoryProvider extends ChangeNotifier {
       (item) => item.id == id,
       orElse: () => throw Exception('Chat not found'),
     );
-
     if (_chatProvider != null) {
       await _chatProvider!.loadChatFromHistory(chatItem);
     }

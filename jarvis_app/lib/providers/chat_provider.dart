@@ -128,6 +128,10 @@ class ChatProvider extends ChangeNotifier {
       _currentChatId = _generateChatId();
     }
 
+    // CRITICAL: Capture the chat ID for this specific send operation
+    // This ensures the response goes to the correct chat even if user switches chats
+    final chatIdForThisSend = _currentChatId!;
+
     final today = DateTime.now().toIso8601String().split('T')[0];
     final contentWithDate = '[Current date: $today.] $content';
 
@@ -146,15 +150,15 @@ class ChatProvider extends ChangeNotifier {
     notifyListeners();
     
     // Set loading state and save chat with user message
-    if (_chatHistoryProvider != null && _currentChatId != null) {
-      _chatHistoryProvider.setLoadingState(_currentChatId!, true);
-      await _chatHistoryProvider.saveChat(_currentChatId!, _messages, isLoading: true);
+    if (_chatHistoryProvider != null) {
+      _chatHistoryProvider.setLoadingState(chatIdForThisSend, true);
+      await _chatHistoryProvider.saveChat(chatIdForThisSend, _messages, isLoading: true);
     }
 
     try {
       if (_useAdkBackend && _adkBackendUrl.isNotEmpty) {
         try {
-          await _sendMessageViaAdk(contentWithDate, currentToken);
+          await _sendMessageViaAdk(contentWithDate, currentToken, chatIdForThisSend);
         } on Exception catch (e) {
           // Check if cancelled during exception handling
           if (currentToken != _sendToken) return;
@@ -165,13 +169,13 @@ class ChatProvider extends ChangeNotifier {
               e.toString().contains('refused the network connection')) {
             _agentStatus = 'ADK unavailable, using local agent...';
             notifyListeners();
-            await _sendMessageViaOrchestrator(currentToken);
+            await _sendMessageViaOrchestrator(currentToken, chatIdForThisSend);
           } else {
             rethrow;
           }
         }
       } else {
-        await _sendMessageViaOrchestrator(currentToken);
+        await _sendMessageViaOrchestrator(currentToken, chatIdForThisSend);
       }
       
       // Check if this send was cancelled while processing
@@ -203,10 +207,11 @@ class ChatProvider extends ChangeNotifier {
         _agentStatus = null;
         notifyListeners();
         
-        // Clear loading state and save final chat
-        if (_chatHistoryProvider != null && _currentChatId != null) {
-          _chatHistoryProvider.setLoadingState(_currentChatId!, false);
-          await _chatHistoryProvider.saveChat(_currentChatId!, _messages, isLoading: false);
+        // Clear loading state and save final chat using the captured chat ID
+        if (_chatHistoryProvider != null) {
+          _chatHistoryProvider.setLoadingState(chatIdForThisSend, false);
+          // Get the messages for this specific chat from history
+          await _saveResponseToCorrectChat(chatIdForThisSend);
         }
       }
     }
@@ -218,7 +223,7 @@ class ChatProvider extends ChangeNotifier {
     return '${timestamp}_$random';
   }
 
-  Future<void> _sendMessageViaAdk(String content, int token) async {
+  Future<void> _sendMessageViaAdk(String content, int token, String chatId) async {
     if (!_bridgeServer.isRunning) {
       await _bridgeServer.start();
     }
@@ -270,17 +275,14 @@ class ChatProvider extends ChangeNotifier {
     if (token != _sendToken) return;
 
     _agentMessages.add({'role': 'assistant', 'content': responseText});
-    _messages.add(Message(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      content: responseText,
-      role: MessageRole.assistant,
-      timestamp: DateTime.now(),
-      status: MessageStatus.sent,
-    ));
+    
+    // Add response to the correct chat (may be different from currently loaded chat)
+    await _addResponseToChat(chatId, responseText);
+    
     _agentStatus = null;
   }
 
-  Future<void> _sendMessageViaOrchestrator(int token) async {
+  Future<void> _sendMessageViaOrchestrator(int token, String chatId) async {
     final registry = ToolRegistry.global;
     final orchestrator = AgentOrchestrator(
       service: _service,
@@ -302,13 +304,8 @@ class ChatProvider extends ChangeNotifier {
     
     _agentMessages = updatedMessages;
 
-    _messages.add(Message(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      content: responseText,
-      role: MessageRole.assistant,
-      timestamp: DateTime.now(),
-      status: MessageStatus.sent,
-    ));
+    // Add response to the correct chat (may be different from currently loaded chat)
+    await _addResponseToChat(chatId, responseText);
   }
 
   /// Build a contextual fallback when the agent returns no meaningful text.
@@ -371,6 +368,42 @@ Be concise and helpful.''';
 
   static String get _jarvisSystemPrompt => _getJarvisSystemPrompt();
 
+  /// Add a response message to a specific chat, handling cross-chat scenarios
+  Future<void> _addResponseToChat(String chatId, String responseText) async {
+    final responseMessage = Message(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      content: responseText,
+      role: MessageRole.assistant,
+      timestamp: DateTime.now(),
+      status: MessageStatus.sent,
+    );
+
+    // If this is the currently loaded chat, add to _messages for immediate display
+    if (_currentChatId == chatId) {
+      _messages.add(responseMessage);
+      notifyListeners();
+    } else {
+      // Response is for a different chat - add it to that chat's history without displaying
+      if (_chatHistoryProvider != null) {
+        final chatHistory = _chatHistoryProvider.history as List;
+        final chatIndex = chatHistory.indexWhere((item) => item.id == chatId);
+        if (chatIndex >= 0) {
+          final chatItem = chatHistory[chatIndex];
+          final updatedMessages = List<Message>.from(chatItem.messages)..add(responseMessage);
+          await _chatHistoryProvider.saveChat(chatId, updatedMessages, isLoading: false);
+        }
+      }
+    }
+  }
+
+  /// Save the response to the correct chat in history
+  Future<void> _saveResponseToCorrectChat(String chatId) async {
+    if (_chatHistoryProvider == null) return;
+    if (_currentChatId == chatId) {
+      await _chatHistoryProvider.saveChat(chatId, _messages, isLoading: false);
+    }
+  }
+
   void clearMessages() {
     // Increment token to cancel any ongoing sends
     _sendToken++;
@@ -388,7 +421,7 @@ Be concise and helpful.''';
     _currentChatId = chatItem.id;
     _messages.clear();
     _messages.addAll(chatItem.messages);
-    
+
     // Rebuild agent messages from chat messages
     _agentMessages.clear();
     for (final message in chatItem.messages) {
@@ -397,12 +430,11 @@ Be concise and helpful.''';
         'content': message.content,
       });
     }
-    
-    _adkSessionId = chatItem.id; // Reuse chat ID as session ID
+
+    _adkSessionId = chatItem.id;
     _isLoading = false;
     _error = null;
     _agentStatus = null;
-    
     notifyListeners();
   }
 
