@@ -84,6 +84,7 @@ class JarvisApp extends StatelessWidget {
       home: MultiProvider(
         providers: [
           ChangeNotifierProvider.value(value: chatProvider),
+          ChangeNotifierProvider.value(value: chatHistoryProvider),
           ChangeNotifierProvider.value(value: settingsProvider),
           ChangeNotifierProvider.value(value: tasksProvider),
           ChangeNotifierProvider.value(value: iliProvider),
