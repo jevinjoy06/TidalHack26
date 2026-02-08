@@ -121,7 +121,20 @@ class ChatProvider extends ChangeNotifier {
 
     try {
       if (_useAdkBackend && _adkBackendUrl.isNotEmpty) {
-        await _sendMessageViaAdk(content);
+        try {
+          await _sendMessageViaAdk(content);
+        } on Exception catch (e) {
+          // If ADK backend is unreachable, fall back to orchestrator
+          if (e.toString().contains('SocketException') ||
+              e.toString().contains('Connection refused') ||
+              e.toString().contains('refused the network connection')) {
+            _agentStatus = 'ADK unavailable, using local agent...';
+            notifyListeners();
+            await _sendMessageViaOrchestrator();
+          } else {
+            rethrow;
+          }
+        }
       } else {
         await _sendMessageViaOrchestrator();
       }
