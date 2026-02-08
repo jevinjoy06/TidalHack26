@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
@@ -60,6 +61,23 @@ class ToolRegistry {
     } catch (_) {
       return 'Error: Invalid JSON arguments';
     }
+
+    // #region agent log
+    if (toolName == 'create_calendar_event') {
+      try {
+        final payload = {
+          'id': 'log_${DateTime.now().millisecondsSinceEpoch}',
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+          'location': 'tool_registry.dart:execute',
+          'message': 'create_calendar_event raw input',
+          'data': {'toolName': toolName, 'argumentsJson': argumentsJson, 'decodedArgs': args},
+          'hypothesisId': 'H1',
+        };
+        File('/Users/allenthomas/TidalHack26/.cursor/debug.log')
+            .writeAsStringSync('${jsonEncode(payload)}\n', mode: FileMode.append);
+      } catch (_) {}
+    }
+    // #endregion
 
     try {
       return await entry.executor(args);

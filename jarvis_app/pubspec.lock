@@ -33,14 +33,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.2"
-  calendar_bridge:
-    dependency: "direct main"
-    description:
-      name: calendar_bridge
-      sha256: "9c2da40abc349178e971305e9e9214a88aa861ee2a2c333ad88e4d91af5648b2"
-      url: "https://pub.dev"
-    source: hosted
-    version: "1.0.5"
   characters:
     dependency: transitive
     description:
@@ -448,14 +440,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.1.5+1"
-  rrule:
-    dependency: transitive
-    description:
-      name: rrule
-      sha256: f6f6ad5bf7b19d218d4c985d6055d3c9717f1d6efd5d1c0127b1146f1eb3640c
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.2.18"
   shared_preferences:
     dependency: "direct main"
     description:
@@ -597,22 +581,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.7"
-  time:
-    dependency: transitive
-    description:
-      name: time
-      sha256: "46187cf30bffdab28c56be9a63861b36e4ab7347bf403297595d6a97e10c789f"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.6"
-  timezone:
-    dependency: transitive
-    description:
-      name: timezone
-      sha256: dd14a3b83cfd7cb19e7888f1cbc20f258b8d71b54c06f79ac585f14093a287d1
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.10.1"
   typed_data:
     dependency: transitive
     description:

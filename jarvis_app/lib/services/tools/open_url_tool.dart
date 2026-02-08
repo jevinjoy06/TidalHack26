@@ -39,7 +39,12 @@ const openUrlSchema = {
 Future<String> openUrlExecutor(Map<String, dynamic> args) async {
   final urlStr = args['url']?.toString() ?? '';
   // #region agent log
-  _log('open_url_tool.dart:entry', 'openUrlExecutor called', {'url': urlStr.length > 80 ? '${urlStr.substring(0, 80)}...' : urlStr});
+  _log('open_url_tool.dart:entry', 'openUrlExecutor called', {
+    'url_preview': urlStr.length > 80 ? '${urlStr.substring(0, 80)}...' : urlStr,
+    'url_full': urlStr,
+    'url_length': urlStr.length,
+    'hypothesisId': 'H7',
+  });
   // #endregion
   if (urlStr.isEmpty) return 'Error: url is required';
 

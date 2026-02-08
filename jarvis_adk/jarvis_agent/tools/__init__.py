@@ -1,6 +1,6 @@
 from .shopping import shopping_search
 from .tavily import tavily_search
-from .local_bridge import open_url, send_email, read_calendar, read_emails
+from .local_bridge import open_url, send_email, read_calendar, read_emails, create_calendar_event
 from .notify import notify_task_complete
 from .google_docs import create_google_doc
 
@@ -11,6 +11,7 @@ __all__ = [
     "send_email",
     "read_calendar",
     "read_emails",
+    "create_calendar_event",
     "notify_task_complete",
     "create_google_doc",
 ]
