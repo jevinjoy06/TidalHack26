@@ -32,7 +32,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final FocusNode _keyboardFocusNode = FocusNode();
   int _selectedMode = 0; // 0 = Type, 1 = Voice
   String? _currentChatId;
-  SidebarState _sidebarState = SidebarState.expanded;
+  SidebarState _sidebarState = SidebarState.hidden;
   List<Map<String, dynamic>> _chats = [];
 
   @override
