@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'providers/chat_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/tasks_provider.dart';
+import 'providers/ili_provider.dart';
 import 'services/tools/tool_setup.dart';
 import 'screens/home_screen.dart';
 import 'theme/app_theme.dart';
@@ -58,6 +59,7 @@ class JarvisApp extends StatelessWidget {
     final chatProvider = ChatProvider();
     final settingsProvider = SettingsProvider();
     final tasksProvider = TasksProvider();
+    final iliProvider = IliProvider();
     _setupProviders(chatProvider, settingsProvider);
     // Initialize settings AFTER callbacks are registered
     settingsProvider.initialize();
@@ -67,6 +69,7 @@ class JarvisApp extends StatelessWidget {
         ChangeNotifierProvider.value(value: chatProvider),
         ChangeNotifierProvider.value(value: settingsProvider),
         ChangeNotifierProvider.value(value: tasksProvider),
+        ChangeNotifierProvider.value(value: iliProvider),
       ],
       child: Consumer<SettingsProvider>(
         builder: (context, settings, _) {

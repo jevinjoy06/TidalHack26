@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'chat_screen.dart';
 import 'tasks_screen.dart';
+import 'ili_screen.dart';
 import 'settings_screen.dart';
 import '../theme/app_theme.dart';
 
@@ -74,6 +75,7 @@ class _HomeScreenState extends State<HomeScreen>
                 children: const [
                   ChatScreen(key: ValueKey('chat')),
                   TasksScreen(key: ValueKey('tasks')),
+                  IliScreen(key: ValueKey('ili')),
                   SettingsScreen(key: ValueKey('settings')),
                 ],
               ),
@@ -273,10 +275,18 @@ class _HomeScreenState extends State<HomeScreen>
                 ),
                 const SizedBox(height: 4),
                 _SidebarNavItem(
-                  icon: CupertinoIcons.settings,
-                  label: 'Settings',
+                  icon: CupertinoIcons.graph_square,
+                  label: 'ILI Alignment',
                   active: _currentIndex == 2,
                   onTap: () => _onNavTap(2),
+                  isDark: isDark,
+                ),
+                const SizedBox(height: 4),
+                _SidebarNavItem(
+                  icon: CupertinoIcons.settings,
+                  label: 'Settings',
+                  active: _currentIndex == 3,
+                  onTap: () => _onNavTap(3),
                   isDark: isDark,
                 ),
               ],
