@@ -13,3 +13,4 @@ fastapi
 uvicorn
 scikit-learn
 openai
+playwright

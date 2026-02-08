@@ -1,45 +1,13 @@
-import 'dart:convert';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show SelectableText, AdaptiveTextSelectionToolbar, ContextMenuButtonItem, SelectionChangedCause, EditableTextState, Colors;
 import 'package:flutter/gestures.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../models/message.dart';
 import '../theme/app_theme.dart';
 import 'rich_card.dart';
-
-// #region agent log
-void _log(String location, String message, Map<String, dynamic> data) {
-  try {
-    final payload = {
-      'id': 'log_${DateTime.now().millisecondsSinceEpoch}',
-      'location': location,
-      'message': message,
-      'data': data,
-      'timestamp': DateTime.now().millisecondsSinceEpoch,
-      'sessionId': 'debug-session',
-      'runId': 'run1',
-      'hypothesisId': 'A'
-    };
-    // HTTP POST to debug server
-    // ignore: unawaited_futures
-    http.post(
-      Uri.parse('http://127.0.0.1:7242/ingest/78061abd-f637-4255-9643-75d670b2aba6'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode(payload),
-    ).catchError((_) {
-      // Return a dummy response to satisfy the Future type
-      return http.Response('', 500);
-    });
-  } catch (e) {
-    // Ignore logging errors
-  }
-}
-// #endregion
 
 class LinkInfo {
   final String url;
@@ -75,14 +43,6 @@ class _MessageBubbleState extends State<MessageBubble> {
   void initState() {
     super.initState();
     _parseLinks();
-    
-    // #region agent log
-    _log('message_bubble.dart:initState', 'Initializing message bubble', {
-      'messageLength': widget.message.content.length,
-      'hasLinks': _links.isNotEmpty,
-      'isUser': widget.message.role == 'user'
-    });
-    // #endregion
   }
 
   @override
@@ -95,13 +55,6 @@ class _MessageBubbleState extends State<MessageBubble> {
     final text = widget.message.content;
     _links = [];
 
-    // #region agent log
-    _log('message_bubble.dart:_parseLinks', 'Parsing links', {
-      'textLength': text.length,
-      'textPreview': text.length > 100 ? text.substring(0, 100) : text
-    });
-    // #endregion
-
     // Parse markdown links: [text](url)
     final markdownLinkRegex = RegExp(r'\[([^\]]+)\]\(([^)]+)\)');
     for (var match in markdownLinkRegex.allMatches(text)) {
@@ -111,14 +64,6 @@ class _MessageBubbleState extends State<MessageBubble> {
         endIndex: match.end,
         displayText: match.group(1)!,
       ));
-      // #region agent log
-      _log('message_bubble.dart:_parseLinks', 'Found markdown link', {
-        'url': match.group(2),
-        'text': match.group(1),
-        'startIndex': match.start,
-        'endIndex': match.end
-      });
-      // #endregion
     }
 
     // Parse plain URLs: https?://...
@@ -139,24 +84,11 @@ class _MessageBubbleState extends State<MessageBubble> {
           endIndex: match.end,
           displayText: match.group(0)!,
         ));
-        // #region agent log
-        _log('message_bubble.dart:_parseLinks', 'Found plain URL', {
-          'url': match.group(0),
-          'startIndex': match.start,
-          'endIndex': match.end
-        });
-        // #endregion
       }
     }
 
     // Sort links by start index
     _links.sort((a, b) => a.startIndex.compareTo(b.startIndex));
-    
-    // #region agent log
-    _log('message_bubble.dart:_parseLinks', 'Link parsing complete', {
-      'totalLinks': _links.length
-    });
-    // #endregion
   }
 
   @override
@@ -258,14 +190,11 @@ class _MessageBubbleState extends State<MessageBubble> {
     required bool isDark,
     required BuildContext context,
   }) {
-    // #region agent log
-    _log('message_bubble.dart:_buildMessageText', 'Building message text', {
-      'textLength': widget.message.content.length,
-      'hasLinks': _links.isNotEmpty,
-      'linkCount': _links.length
-    });
-    // #endregion
-    
+    final content = widget.message.content.trim();
+    if (content.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
     final baseStyle = TextStyle(
       fontSize: 17,
       color: isUser
@@ -277,10 +206,44 @@ class _MessageBubbleState extends State<MessageBubble> {
                   : CupertinoColors.black),
     );
 
-    // Use SelectableText.rich for native selection with clickable links
-    // This provides web-like text selection (left-click drag, right-click drag)
+    // Assistant messages: render as Markdown (bold, italic, code, links).
+    if (!isUser) {
+      final styleSheet = MarkdownStyleSheet(
+        p: baseStyle,
+        h1: baseStyle.copyWith(fontSize: 22, fontWeight: FontWeight.bold),
+        h2: baseStyle.copyWith(fontSize: 20, fontWeight: FontWeight.bold),
+        h3: baseStyle.copyWith(fontSize: 19, fontWeight: FontWeight.w600),
+        a: baseStyle.copyWith(
+          color: CupertinoColors.systemBlue,
+          decoration: TextDecoration.underline,
+        ),
+        code: baseStyle.copyWith(
+          fontFamily: 'monospace',
+          fontSize: 16,
+          backgroundColor: isDark
+              ? CupertinoColors.systemGrey.withOpacity(0.3)
+              : CupertinoColors.systemGrey5,
+        ),
+        codeblockDecoration: BoxDecoration(
+          color: isDark
+              ? CupertinoColors.systemGrey.withOpacity(0.25)
+              : CupertinoColors.systemGrey6,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        codeblockPadding: const EdgeInsets.all(12),
+      );
+      return MarkdownBody(
+        data: widget.message.content,
+        selectable: true,
+        styleSheet: styleSheet,
+        onTapLink: (text, href, title) {
+          if (href != null && href.isNotEmpty) _launchUrl(href);
+        },
+      );
+    }
+
+    // User messages: plain text with clickable links (existing behavior).
     final textSpans = _buildTextSpans(baseStyle);
-    
     final selectableText = SelectableText.rich(
       TextSpan(children: textSpans),
       style: baseStyle,
@@ -290,14 +253,6 @@ class _MessageBubbleState extends State<MessageBubble> {
       },
     );
 
-    // #region agent log
-    _log('message_bubble.dart:_buildMessageText', 'SelectableText.rich created', {
-      'hasLinks': _links.isNotEmpty,
-      'textLength': widget.message.content.length
-    });
-    // #endregion
-
-    // Wrap in MouseRegion for cursor styling
     return MouseRegion(
       cursor: SystemMouseCursors.text,
       child: selectableText,
@@ -335,12 +290,7 @@ class _MessageBubbleState extends State<MessageBubble> {
           decoration: TextDecoration.underline,
         ),
         recognizer: TapGestureRecognizer()
-          ..onTap = () {
-            // #region agent log
-            _log('message_bubble.dart:linkTap', 'Link tapped', {'url': link.url});
-            // #endregion
-            _launchUrl(link.url);
-          },
+          ..onTap = () => _launchUrl(link.url),
       ));
       
       lastIndex = link.endIndex;
@@ -364,9 +314,6 @@ class _MessageBubbleState extends State<MessageBubble> {
         ContextMenuButtonItem(
           label: 'Copy',
           onPressed: () {
-            // #region agent log
-            _log('message_bubble.dart:contextMenu', 'Copy action pressed', {});
-            // #endregion
             editableTextState.copySelection(SelectionChangedCause.toolbar);
             Navigator.pop(context);
           },
@@ -374,9 +321,6 @@ class _MessageBubbleState extends State<MessageBubble> {
         ContextMenuButtonItem(
           label: 'Select All',
           onPressed: () {
-            // #region agent log
-            _log('message_bubble.dart:contextMenu', 'Select All action pressed', {});
-            // #endregion
             editableTextState.selectAll(SelectionChangedCause.toolbar);
             Navigator.pop(context);
           },
@@ -388,30 +332,13 @@ class _MessageBubbleState extends State<MessageBubble> {
 
 
   Future<void> _launchUrl(String url) async {
-    // #region agent log
-    _log('message_bubble.dart:_launchUrl', 'Launching URL', {'url': url});
-    // #endregion
     try {
       final uri = Uri.parse(url);
       final canLaunch = await canLaunchUrl(uri);
-      // #region agent log
-      _log('message_bubble.dart:_launchUrl', 'canLaunchUrl result', {'canLaunch': canLaunch});
-      // #endregion
       if (canLaunch) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
-        // #region agent log
-        _log('message_bubble.dart:_launchUrl', 'URL launched successfully', {'url': url});
-        // #endregion
-      } else {
-        // #region agent log
-        _log('message_bubble.dart:_launchUrl', 'Cannot launch URL', {'url': url});
-        // #endregion
       }
-    } catch (e) {
-      // #region agent log
-      _log('message_bubble.dart:_launchUrl', 'Launch error', {'url': url, 'error': e.toString()});
-      // #endregion
-    }
+    } catch (_) {}
   }
 
   Widget _buildAvatar(bool isDark) {
