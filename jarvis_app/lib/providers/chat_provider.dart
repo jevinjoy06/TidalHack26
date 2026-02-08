@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 
 import '../models/message.dart';
@@ -196,8 +199,10 @@ class ChatProvider extends ChangeNotifier {
       notifyListeners();
     }
 
-    final responseText = AdkService.getFinalTextFromEvents(events) ??
-        'I was unable to generate a response.';
+    final rawText = AdkService.getFinalTextFromEvents(events);
+    final fallback = _buildFallbackForNoResponse(events);
+    final textToSanitize = rawText ?? fallback;
+    final responseText = _sanitizeToolCallGarbage(textToSanitize);
 
     _agentMessages.add({'role': 'assistant', 'content': responseText});
     _messages.add(Message(
@@ -232,6 +237,43 @@ class ChatProvider extends ChangeNotifier {
       timestamp: DateTime.now(),
       status: MessageStatus.sent,
     ));
+  }
+
+  /// Build a contextual fallback when the agent returns no meaningful text.
+  static String _buildFallbackForNoResponse(List<Map<String, dynamic>> events) {
+    final tools = AdkService.getToolsCalledFromEvents(events);
+    if (tools.contains('create_google_doc')) {
+      return 'I ran your request. If you asked for a document, check your Google Docs—it may have been created. You can also try rephrasing.';
+    }
+    if (tools.contains('open_url')) {
+      return 'I ran your request. A link may have been opened in your browser. You can also try rephrasing.';
+    }
+    if (tools.isNotEmpty) {
+      return 'I ran your request but didn\'t get a clear summary. Check whether the action completed (e.g. document, link, email). You can also try rephrasing.';
+    }
+    return 'I was unable to generate a response. Try rephrasing your request.';
+  }
+
+  /// Replaces model output that emits literal <tool_call></tool_call> as text
+  /// (happens on follow-up turns with some models) with a friendly fallback.
+  static String _sanitizeToolCallGarbage(String text) {
+    final t = text.trim();
+    if (t.isEmpty) return text;
+    final lower = t.toLowerCase();
+    if (!lower.contains('tool_call')) return text;
+    final stripped =
+        t.replaceAll(RegExp(r'<{1,2}/?tool_call>', caseSensitive: false), '').trim();
+    if (stripped.isEmpty) {
+      // #region agent log
+      try {
+        File('/Users/allenthomas/TidalHack26/.cursor/debug.log').writeAsStringSync(
+            '${jsonEncode({"location":"chat_provider.dart:_sanitizeToolCallGarbage","message":"fallback triggered","data":{"rawText_preview":text.length > 150 ? text.substring(0, 150) : text},"timestamp":DateTime.now().millisecondsSinceEpoch,"hypothesisId":"H7"})}\n',
+            mode: FileMode.append);
+      } catch (_) {}
+      // #endregion
+      return "I completed your request but didn't get a clear summary. If you asked for a document, check your Google Docs—it may have been created. You can also try rephrasing your request.";
+    }
+    return text;
   }
 
   static const String _jarvisSystemPrompt = '''

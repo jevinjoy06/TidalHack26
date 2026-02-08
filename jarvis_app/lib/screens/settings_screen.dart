@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show ScaffoldMessenger, SnackBar;
 import 'package:flutter/foundation.dart';
@@ -12,6 +15,7 @@ import '../services/featherless_service.dart';
 import '../services/agent_orchestrator.dart';
 import '../services/adk_service.dart';
 import '../services/tools/tool_registry.dart';
+import '../services/tools/google_docs_tool.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -21,6 +25,10 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  Future<void> _refreshGoogleState() async {
+    if (mounted) setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
     final brightness = CupertinoTheme.of(context).brightness;
@@ -67,6 +75,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   isDark,
                 )
                     .animate(delay: 0.ms)
+                    .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+                    .slideY(begin: 0.04, end: 0, duration: 350.ms, curve: const Cubic(0.4, 0, 0.2, 1)),
+
+                // Google Account
+                _buildSection(
+                  'Google Account',
+                  [
+                    _buildGoogleAccountTile(context, isDark),
+                  ],
+                  isDark,
+                )
+                    .animate(delay: 40.ms)
                     .fadeIn(duration: 350.ms, curve: Curves.easeOut)
                     .slideY(begin: 0.04, end: 0, duration: 350.ms, curve: const Cubic(0.4, 0, 0.2, 1)),
 
@@ -523,6 +543,137 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       );
     }
+  }
+
+  Widget _buildGoogleAccountTile(BuildContext context, bool isDark) {
+    return FutureBuilder<bool>(
+      future: isSignedInWithGoogle(),
+      builder: (context, snapshot) {
+        final signedIn = snapshot.data ?? false;
+        return FutureBuilder<String?>(
+          future: signedIn ? getSignedInEmail() : Future.value(null),
+          builder: (context, emailSnap) {
+            final email = emailSnap.data;
+            return Container(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: isDark ? AppTheme.bgDarkTertiary : AppTheme.bgLightTertiary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      CupertinoIcons.globe,
+                      color: isDark ? AppTheme.textSecondary : AppTheme.textDarkSecondary,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          signedIn ? 'Signed in' : 'Not signed in',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: isDark ? AppTheme.textPrimary : AppTheme.textDark,
+                          ),
+                        ),
+                        if (email != null && email.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              email,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: isDark ? AppTheme.textTertiary : AppTheme.textDarkSecondary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          )
+                        else if (!signedIn)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              'Required for Google Docs',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: isDark ? AppTheme.textTertiary : AppTheme.textDarkSecondary,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  CupertinoButton(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    minSize: 0,
+                    color: signedIn
+                        ? (isDark ? AppTheme.bgDarkTertiary : AppTheme.bgLightTertiary)
+                        : AppTheme.primaryMaroon.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    onPressed: () async {
+                      if (signedIn) {
+                        await signOutFromGoogle();
+                        _refreshGoogleState();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Signed out from Google')),
+                          );
+                        }
+                      } else {
+                        // #region agent log
+                        try {
+                          File('/Users/allenthomas/TidalHack26/.cursor/debug.log')
+                              .writeAsStringSync(
+                                  '${jsonEncode({"location":"settings_screen.dart:onPressed","message":"before signInWithGoogle","timestamp":DateTime.now().millisecondsSinceEpoch,"hypothesisId":"H5"})}\n',
+                                  mode: FileMode.append);
+                        } catch (_) {}
+                        // #endregion
+                        final ok = await signInWithGoogle();
+                        // #region agent log
+                        try {
+                          File('/Users/allenthomas/TidalHack26/.cursor/debug.log')
+                              .writeAsStringSync(
+                                  '${jsonEncode({"location":"settings_screen.dart:onPressed","message":"after signInWithGoogle","data":{"ok":ok},"timestamp":DateTime.now().millisecondsSinceEpoch,"hypothesisId":"H5"})}\n',
+                                  mode: FileMode.append);
+                        } catch (_) {}
+                        // #endregion
+                        _refreshGoogleState();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                ok ? 'Signed in successfully' : 'Sign in cancelled or failed',
+                              ),
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    child: Text(
+                      signedIn ? 'Sign out' : 'Sign in with Google',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: signedIn
+                            ? (isDark ? AppTheme.textSecondary : AppTheme.textDarkSecondary)
+                            : AppTheme.primaryMaroon,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Widget _buildSection(String title, List<Widget> children, bool isDark) {

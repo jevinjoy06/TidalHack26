@@ -1,0 +1,4 @@
+{"location": "local_bridge.py:_call_bridge", "message": "POST to bridge", "data": {"tool": "open_url", "args_keys": ["url"]}, "timestamp": 1770518354525, "hypothesisId": "H3"}
+{"location": "local_bridge.py:bridge_resp", "message": "bridge response", "data": {"status": 200, "body_preview": "{\"result\":\"Opened https://docs.google.com/document/d/<document_id>/edit in browser.\"}"}, "timestamp": 1770518354596, "hypothesisId": "H3"}
+{"location": "local_bridge.py:_call_bridge", "message": "POST to bridge", "data": {"tool": "send_email", "args_keys": ["to", "subject", "body"]}, "timestamp": 1770518403496, "hypothesisId": "H3"}
+{"location": "local_bridge.py:bridge_resp", "message": "bridge response", "data": {"status": 200, "body_preview": "{\"result\":\"Sent email to jevinjoy06@gmail.com.\"}"}, "timestamp": 1770518405216, "hypothesisId": "H3"}

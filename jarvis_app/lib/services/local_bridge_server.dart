@@ -100,6 +100,22 @@ class LocalBridgeServer {
     final toolName = data?['tool']?.toString();
     final args = data?['args'];
 
+    // #region agent log
+    if (toolName == 'create_google_doc' || toolName == 'open_url') {
+      try {
+        final payload = {
+          'location': 'local_bridge_server.dart:_handleRequest',
+          'message': 'bridge received $toolName',
+          'data': {'tool': toolName, 'args_keys': args is Map ? (args as Map).keys.toList() : null},
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+          'hypothesisId': 'H4',
+        };
+        File('/Users/allenthomas/TidalHack26/.cursor/debug.log')
+            .writeAsStringSync('${jsonEncode(payload)}\n', mode: FileMode.append);
+      } catch (_) {}
+    }
+    // #endregion
+
     if (toolName == null || toolName.isEmpty) {
       return shelf.Response(
         HttpStatus.badRequest,
@@ -113,6 +129,21 @@ class LocalBridgeServer {
 
     try {
       final result = await ToolRegistry.global.execute(toolName, argsJson);
+      // #region agent log
+      if (toolName == 'create_google_doc' || toolName == 'open_url') {
+        try {
+          final payload = {
+            'location': 'local_bridge_server.dart:execute_result',
+            'message': '$toolName result',
+            'data': {'result_preview': result.length > 100 ? '${result.substring(0, 100)}...' : result},
+            'timestamp': DateTime.now().millisecondsSinceEpoch,
+            'hypothesisId': 'H4',
+          };
+          File('/Users/allenthomas/TidalHack26/.cursor/debug.log')
+              .writeAsStringSync('${jsonEncode(payload)}\n', mode: FileMode.append);
+        } catch (_) {}
+      }
+      // #endregion
       return shelf.Response.ok(
         jsonEncode({'result': result}),
         headers: {'Content-Type': 'application/json'},

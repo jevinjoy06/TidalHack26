@@ -32,5 +32,18 @@
 	<string>JARVIS needs calendar access to read your events for task planning.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>JARVIS needs full calendar access to read your events.</string>
+	<key>GIDClientID</key>
+	<string>206850177500-d3juuhdep1jqh082l9pjcb4s89ct9rdl.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.206850177500-d3juuhdep1jqh082l9pjcb4s89ct9rdl</string>
+			</array>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+		</dict>
+	</array>
 </dict>
 </plist>

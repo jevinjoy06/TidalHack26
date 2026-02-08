@@ -90,4 +90,8 @@ class Secrets {
   static String get tavilyApiKey => dotenv.env['TAVILY_API_KEY'] ?? '';
   static String get googleClientId => dotenv.env['GOOGLE_CLIENT_ID'] ?? '';
   static String get googleClientSecret => dotenv.env['GOOGLE_CLIENT_SECRET'] ?? '';
+
+  // SMTP email (for send_email tool)
+  static String get emailAddress => dotenv.env['EMAIL_ADDRESS'] ?? '';
+  static String get emailPassword => dotenv.env['EMAIL_APP_PASSWORD'] ?? dotenv.env['EMAIL_PASSWORD'] ?? '';
 }

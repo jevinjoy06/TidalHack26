@@ -149,19 +149,38 @@ class AdkService {
   }
 
   /// Extract final assistant text from ADK events.
+  /// Skips text that is only tool_call tags (LLM sometimes outputs these as literal text).
   static String? getFinalTextFromEvents(List<Map<String, dynamic>> events) {
-    String? lastText;
+    String? lastMeaningfulText;
     for (final e in events) {
       final content = e['content'] as Map<String, dynamic>?;
       final parts = content?['parts'] as List<dynamic>?;
       if (parts == null) continue;
       for (final p in parts) {
         if (p is Map && p['text'] != null) {
-          lastText = p['text'] as String?;
+          final t = (p['text'] as String?)?.trim() ?? '';
+          if (t.isEmpty) continue;
+          // Skip text that is only tool_call tags (strips to nothing)
+          final lower = t.toLowerCase();
+          if (lower.contains('tool_call')) {
+            final stripped = t.replaceAll(RegExp(r'<{1,2}/?tool_call[^>]*>', caseSensitive: false), '').trim();
+            if (stripped.isEmpty) continue; // Skip this garbage, keep previous meaningful text
+          }
+          lastMeaningfulText = p['text'] as String?;
         }
       }
     }
-    return lastText;
+    return lastMeaningfulText;
+  }
+
+  /// Extract all tool names that were called from events.
+  static Set<String> getToolsCalledFromEvents(List<Map<String, dynamic>> events) {
+    final names = <String>{};
+    for (final e in events) {
+      final n = getToolNameFromEvent(e);
+      if (n != null) names.add(n);
+    }
+    return names;
   }
 
   /// Extract current tool name from events (for agentStatus).

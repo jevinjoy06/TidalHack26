@@ -1,26 +1,47 @@
 """Local tools that call the Flutter bridge at http://127.0.0.1:8765/execute."""
 import os
 import json
+import time
 import httpx
 
 BRIDGE_URL = os.getenv("JARVIS_BRIDGE_URL", "http://127.0.0.1:8765")
 
+# #region agent log
+def _log(loc, msg, data, hid=None):
+    p = {"location": loc, "message": msg, "data": data, "timestamp": int(time.time() * 1000)}
+    if hid:
+        p["hypothesisId"] = hid
+    open("/Users/allenthomas/TidalHack26/.cursor/debug.log", "a").write(json.dumps(p) + "\n")
+# #endregion
+
 
 def _call_bridge(tool: str, args: dict) -> str:
     """POST to Flutter bridge and return result."""
+    # #region agent log
+    _log("local_bridge.py:_call_bridge", "POST to bridge", {"tool": tool, "args_keys": list(args.keys())}, "H3")
+    # #endregion
     try:
         with httpx.Client(timeout=15) as client:
             resp = client.post(
                 f"{BRIDGE_URL}/execute",
                 json={"tool": tool, "args": args},
             )
+        # #region agent log
+        _log("local_bridge.py:bridge_resp", "bridge response", {"status": resp.status_code, "body_preview": resp.text[:200]}, "H3")
+        # #endregion
         if resp.status_code != 200:
             return f"Error: Bridge returned {resp.status_code}"
         data = resp.json()
         return data.get("result", str(data))
-    except httpx.ConnectError:
+    except httpx.ConnectError as e:
+        # #region agent log
+        _log("local_bridge.py:connect_error", "bridge unreachable", {"error": str(e)}, "H3")
+        # #endregion
         return "Error: Flutter local bridge not reachable. Start the JARVIS app first."
     except Exception as e:
+        # #region agent log
+        _log("local_bridge.py:call_exc", "bridge exception", {"error": str(e)}, "H3")
+        # #endregion
         return f"Error: {e}"
 
 

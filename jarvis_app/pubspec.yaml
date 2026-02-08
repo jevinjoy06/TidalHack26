@@ -42,6 +42,7 @@ dependencies:
 
   # Agent tools
   calendar_bridge: ^1.0.0
+  mailer: ^6.6.0
   google_sign_in: ^6.2.2
   googleapis: ^14.0.0
   extension_google_sign_in_as_googleapis_auth: ^2.0.10

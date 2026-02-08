@@ -1,12 +1,15 @@
+import 'package:mailer/mailer.dart';
+import 'package:mailer/smtp_server.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../config/secrets.dart';
 import 'tool_registry.dart';
 
 const sendEmailSchema = {
   'type': 'function',
   'function': {
     'name': 'send_email',
-    'description': 'Open the default mail client with a pre-filled email. The LLM generates subject and body from the user\'s brief request. User reviews and clicks Send.',
+    'description': 'Send email via SMTP using configured credentials. If credentials not set, opens default mail client with pre-filled draft.',
     'parameters': {
       'type': 'object',
       'properties': {
@@ -26,6 +29,26 @@ Future<String> sendEmailExecutor(Map<String, dynamic> args) async {
 
   if (to.isEmpty) return 'Error: "to" is required';
 
+  final email = Secrets.emailAddress;
+  final password = Secrets.emailPassword;
+
+  if (email.isNotEmpty && password.isNotEmpty) {
+    try {
+      final smtpServer = gmail(email, password);
+      final message = Message()
+        ..from = Address(email, 'JARVIS')
+        ..recipients.add(to)
+        ..subject = subject
+        ..text = body;
+
+      await send(message, smtpServer);
+      return 'Sent email to $to.';
+    } catch (e) {
+      return 'Error sending email: $e';
+    }
+  }
+
+  // Fallback: open default mail client
   try {
     final uri = Uri.parse(
       'mailto:${Uri.encodeComponent(to)}'
@@ -36,7 +59,7 @@ Future<String> sendEmailExecutor(Map<String, dynamic> args) async {
       await launchUrl(uri);
       return 'Opened email client with draft to $to. User can review and send.';
     }
-    return 'Error: Cannot open mail client. Is a default mail app set?';
+    return 'Error: No email credentials in .env (EMAIL_ADDRESS, EMAIL_APP_PASSWORD) and cannot open mail client.';
   } catch (e) {
     return 'Error: $e';
   }
