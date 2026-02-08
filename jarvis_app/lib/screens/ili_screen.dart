@@ -788,10 +788,10 @@ class _IliScreenState extends State<IliScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Growth Predictions section
-          Text('Growth Predictions (AI)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textFg)),
+          Text('Growth Predictions (ML)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textFg)),
           const SizedBox(height: 4),
           Text(
-            'LLM-predicted future depths for fastest-growing anomalies',
+            'ML-predicted future depths for fastest-growing anomalies',
             style: TextStyle(fontSize: 13, color: mutedFg),
           ),
           const SizedBox(height: 12),
@@ -802,7 +802,6 @@ class _IliScreenState extends State<IliScreen> {
               onPressed: () async {
                 await ili.loadGrowthPredictions(
                   '2015->2022', 5,
-                  settings.apiKey, settings.model, settings.featherlessBaseUrl,
                 );
               },
               child: Container(
@@ -846,10 +845,10 @@ class _IliScreenState extends State<IliScreen> {
           const SizedBox(height: 24),
 
           // New Anomaly Predictions
-          Text('New Corrosion Locations (AI)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textFg)),
+          Text('New Corrosion Locations (ML)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: textFg)),
           const SizedBox(height: 4),
           Text(
-            'LLM-predicted locations where new corrosion is likely',
+            'ML-predicted locations where new corrosion is likely',
             style: TextStyle(fontSize: 13, color: mutedFg),
           ),
           const SizedBox(height: 12),
@@ -871,7 +870,6 @@ class _IliScreenState extends State<IliScreen> {
                   onPressed: () async {
                     await ili.loadNewAnomalyPredictions(
                       2022, 0, 5000,
-                      settings.apiKey, settings.model, settings.featherlessBaseUrl,
                     );
                   },
                   child: Container(

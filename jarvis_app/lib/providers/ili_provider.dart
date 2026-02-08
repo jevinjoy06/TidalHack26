@@ -170,15 +170,12 @@ class IliProvider extends ChangeNotifier {
 
   // AI/ML Methods
 
-  Future<void> loadGrowthPredictions(String pair, int topN, String apiKey, String model, String baseUrl) async {
+  Future<void> loadGrowthPredictions(String pair, int topN) async {
     try {
       final uri = Uri.parse('$_apiBaseUrl/ili/predict-growth')
           .replace(queryParameters: {
         'pair': pair,
         'top_n': topN.toString(),
-        'api_key': apiKey,
-        'model': model,
-        'base_url': baseUrl,
       });
       final response = await http.get(uri).timeout(const Duration(seconds: 60));
 
@@ -192,7 +189,7 @@ class IliProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> loadNewAnomalyPredictions(int year, double startDist, double endDist, String apiKey, String model, String baseUrl) async {
+  Future<void> loadNewAnomalyPredictions(int year, double startDist, double endDist, {int topN = 5}) async {
     _newAnomalyError = null;
     try {
       final uri = Uri.parse('$_apiBaseUrl/ili/predict-new-anomalies')
@@ -200,9 +197,7 @@ class IliProvider extends ChangeNotifier {
         'year': year.toString(),
         'start_dist': startDist.toString(),
         'end_dist': endDist.toString(),
-        'api_key': apiKey,
-        'model': model,
-        'base_url': baseUrl,
+        'top_n': topN.toString(),
       });
       final response = await http.get(uri).timeout(const Duration(seconds: 60));
 
