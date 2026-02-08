@@ -108,6 +108,9 @@ class ChatProvider extends ChangeNotifier {
   Future<void> sendMessage(String content) async {
     if (content.trim().isEmpty) return;
 
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    final contentWithDate = '[Current date: $today.] $content';
+
     final userMessage = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       content: content,
@@ -116,7 +119,7 @@ class ChatProvider extends ChangeNotifier {
       status: MessageStatus.sent,
     );
     _messages.add(userMessage);
-    _agentMessages.add({'role': 'user', 'content': content});
+    _agentMessages.add({'role': 'user', 'content': contentWithDate});
     _isLoading = true;
     _error = null;
     _agentStatus = null;
@@ -125,7 +128,7 @@ class ChatProvider extends ChangeNotifier {
     try {
       if (_useAdkBackend && _adkBackendUrl.isNotEmpty) {
         try {
-          await _sendMessageViaAdk(content);
+          await _sendMessageViaAdk(contentWithDate);
         } on Exception catch (e) {
           // If ADK backend is unreachable, fall back to orchestrator
           if (e.toString().contains('SocketException') ||

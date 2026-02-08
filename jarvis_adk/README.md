@@ -29,3 +29,13 @@ Google ADK backend for JARVIS. Run the ADK API server before starting the Flutte
 1. Start ADK: `cd jarvis_adk && adk api_server`
 2. Start Flutter: `cd jarvis_app && flutter run -d macos`
 3. Flutter starts the local bridge on port 8765 for local tools (open_url, send_email, read_calendar, create_google_doc).
+
+## iMessage bridge (optional)
+
+To trigger JARVIS from iMessage, run the imsg bridge. It only accepts messages from **8329696324** whose text **starts with "JARVIS"**; the rest of the line is sent to the agent and the reply is sent back via iMessage.
+
+1. Install [imsg](https://github.com/steipete/imsg) and grant Messages.app access (Full Disk Access, Automation).
+2. With ADK and (for tools) the Flutter app running:  
+   `python imsg_bridge.py`  
+   (or `python -m imsg_bridge` from `jarvis_adk`.)
+3. From the allowed number, send e.g. `JARVIS what's on my calendar?` to get a reply in the same chat.
