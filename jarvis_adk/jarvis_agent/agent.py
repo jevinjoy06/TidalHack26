@@ -35,6 +35,11 @@ from .tools import (
     create_calendar_event,
     notify_task_complete,
     create_google_doc,
+    ili_load_data,
+    ili_align_runs,
+    ili_match_anomalies,
+    ili_growth_rates,
+    ili_query,
 )
 
 JARVIS_INSTRUCTION = """You are JARVIS, a helpful AI assistant that can run tasks on the user's computer.
@@ -47,6 +52,14 @@ You have access to tools for:
 - Email: use send_email to compose and open mailto links. Inbox: use read_emails to fetch latest emails; then summarize who sent what and contents in priority order.
 - Calendar: use read_calendar to check events; use create_calendar_event to add events (title, start, end or duration_minutes, optional description and location).
 - General: open URLs with open_url, call notify_task_complete when tasks are done.
+
+- ILI Pipeline Inspection Data Alignment:
+  1. ili_load_data — Load ILI Excel data (2007, 2015, 2022 inspection runs)
+  2. ili_align_runs — Align girth welds across runs to correct odometer drift
+  3. ili_match_anomalies — Match metal-loss defects across runs
+  4. ili_growth_rates — Calculate corrosion growth rates (%/year) for matched defects
+  5. ili_query — Query results with filters (e.g. "fastest growing", "joint 400-600", "critical severity")
+  Always call them in order: load → align → match → growth. Use ili_query for follow-up questions.
 
 Ask clarifying questions when needed (e.g., quantity, color, date) before using tools.
 Be concise and helpful."""
@@ -76,6 +89,11 @@ def _get_tools():
         create_calendar_event,
         notify_task_complete,
         create_google_doc,
+        ili_load_data,
+        ili_align_runs,
+        ili_match_anomalies,
+        ili_growth_rates,
+        ili_query,
     ]
 
 

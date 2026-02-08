@@ -5,3 +5,11 @@ httpx
 google-auth
 google-auth-oauthlib
 google-api-python-client
+pandas
+openpyxl
+scipy
+numpy
+fastapi
+uvicorn
+scikit-learn
+openai
