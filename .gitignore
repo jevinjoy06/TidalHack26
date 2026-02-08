@@ -2,6 +2,12 @@
 nul
 **/.DS_Store
 
+# Cursor IDE
+.cursor/
+
+# ADK session database
+**/session.db
+
 # Python virtual environments
 .venv/
 venv/
