@@ -32,7 +32,7 @@ def _debug_log(location: str, message: str, data: dict | None = None, hypothesis
     except Exception:
         pass
 
-ALLOWED_SENDER_DIGITS = ("8329696324", "8326215771", "2815208817")
+ALLOWED_SENDER_DIGITS = ("8329696324", "8326215771", "2815208817", "8323491647")
 ADK_URL = os.getenv("JARVIS_ADK_URL", "http://localhost:8000")
 ADK_APP_NAME = "jarvis_agent"
 # Match app: same userId. New session per request so each message is "first in session" like app.
