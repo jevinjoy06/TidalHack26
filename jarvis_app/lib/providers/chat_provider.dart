@@ -305,14 +305,7 @@ class ChatProvider extends ChangeNotifier {
     
     // Add response to the correct chat (may be different from currently loaded chat)
     await _addResponseToChat(chatId, responseText);
-    
-    _messages.add(Message(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
-      content: responseText,
-      role: MessageRole.assistant,
-      timestamp: DateTime.now(),
-      status: MessageStatus.sent,
-    ));
+
     // Reset session when open_url was called so next turn gets a fresh context (avoids context bloat after opening docs/links).
     if (toolsCalled.contains('open_url')) {
       _adkSessionId = null;
