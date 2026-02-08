@@ -1,6 +1,3 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:googleapis/calendar/v3.dart' as calendar;
 
 import 'google_docs_tool.dart';
@@ -52,21 +49,6 @@ DateTime? _parseDateTime(String s) {
 }
 
 Future<String> createCalendarEventExecutor(Map<String, dynamic> args) async {
-  // #region agent log
-  try {
-    final payload = {
-      'id': 'log_${DateTime.now().millisecondsSinceEpoch}',
-      'timestamp': DateTime.now().millisecondsSinceEpoch,
-      'location': 'create_calendar_event_tool.dart:entry',
-      'message': 'executor received args',
-      'data': {'args': args},
-      'hypothesisId': 'H1',
-    };
-    File('/Users/allenthomas/TidalHack26/.cursor/debug.log')
-        .writeAsStringSync('${jsonEncode(payload)}\n', mode: FileMode.append);
-  } catch (_) {}
-  // #endregion
-
   final client = await getAuthenticatedClient();
   if (client == null) {
     return 'Error: Please sign in with Google first (Settings > Sign in with Google).';
@@ -112,27 +94,6 @@ Future<String> createCalendarEventExecutor(Map<String, dynamic> args) async {
     return 'Error: end must be after start.';
   }
 
-  // #region agent log
-  try {
-    final payload = {
-      'id': 'log_${DateTime.now().millisecondsSinceEpoch}',
-      'timestamp': DateTime.now().millisecondsSinceEpoch,
-      'location': 'create_calendar_event_tool.dart:parsed',
-      'message': 'parsed start/end before building event',
-      'data': {
-        'startStr': startStr,
-        'startDt_iso': startDt.toIso8601String(),
-        'endDt_iso': endDt.toIso8601String(),
-        'isAllDay': isAllDay,
-        'now_iso': DateTime.now().toIso8601String(),
-      },
-      'hypothesisId': 'H2',
-    };
-    File('/Users/allenthomas/TidalHack26/.cursor/debug.log')
-        .writeAsStringSync('${jsonEncode(payload)}\n', mode: FileMode.append);
-  } catch (_) {}
-  // #endregion
-
   try {
     calendar.EventDateTime startEdt;
     calendar.EventDateTime endEdt;
@@ -152,44 +113,10 @@ Future<String> createCalendarEventExecutor(Map<String, dynamic> args) async {
       location: location?.isNotEmpty == true ? location : null,
     );
 
-    // #region agent log
-    try {
-      final payload = {
-        'id': 'log_${DateTime.now().millisecondsSinceEpoch}',
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-        'location': 'create_calendar_event_tool.dart:before_insert',
-        'message': 'event start/end sent to API',
-        'data': {
-          'event_start_dateTime': event.start?.dateTime?.toIso8601String(),
-          'event_start_date': event.start?.date?.toString(),
-          'event_end_dateTime': event.end?.dateTime?.toIso8601String(),
-          'event_end_date': event.end?.date?.toString(),
-        },
-        'hypothesisId': 'H3',
-      };
-      File('/Users/allenthomas/TidalHack26/.cursor/debug.log')
-          .writeAsStringSync('${jsonEncode(payload)}\n', mode: FileMode.append);
-    } catch (_) {}
-    // #endregion
-
     final calendarApi = calendar.CalendarApi(client);
     final created = await calendarApi.events.insert(event, 'primary');
 
     final link = created.htmlLink ?? '';
-    // #region agent log
-    try {
-      final payload = {
-        'id': 'log_${DateTime.now().millisecondsSinceEpoch}',
-        'timestamp': DateTime.now().millisecondsSinceEpoch,
-        'location': 'create_calendar_event_tool.dart:after_insert',
-        'message': 'calendar event created, link returned by API',
-        'data': {'htmlLink': link, 'eventId': created.id, 'linkLength': link.length},
-        'hypothesisId': 'H6',
-      };
-      File('/Users/allenthomas/TidalHack26/.cursor/debug.log')
-          .writeAsStringSync('${jsonEncode(payload)}\n', mode: FileMode.append);
-    } catch (_) {}
-    // #endregion
     final linkHint = link.isNotEmpty ? ' Call open_url with $link so the user can view it.' : '';
     return "Created event '$title' on ${startStr}.$linkHint";
   } catch (e) {
