@@ -8,12 +8,16 @@ Requires: imsg CLI, ADK server at ADK_URL, Flutter bridge for tools.
 import json
 import os
 import pty
+import time
 import re
 import shutil
 import subprocess
 import sys
 
 import httpx
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 DEBUG_LOG_PATH = "/Users/allenthomas/TidalHack26/.cursor/debug.log"
 
@@ -125,6 +129,14 @@ def extract_user_message(text: str) -> str | None:
     return rest
 
 
+RESET_PHRASES = ("hi", "hello", "reset", "new chat", "start over", "clear")
+
+
+def should_reset_context(user_message: str) -> bool:
+    """True if the message is a reset phrase that should start a fresh conversation."""
+    return user_message.strip().lower() in RESET_PHRASES
+
+
 def get_final_text_from_events(events: list[dict]) -> str | None:
     """Extract last meaningful assistant text from ADK events (skip tool_call-only)."""
     last_text: str | None = None
@@ -193,27 +205,27 @@ def sanitize_reply(text: str) -> str:
     return stripped if stripped else text
 
 
-def ensure_session_client(client: httpx.Client) -> None:
+def ensure_session_client(client: httpx.Client, session_id: str) -> None:
     """Create ADK session if it doesn't exist. /run returns 404 when session is missing."""
     create_url = f"{ADK_URL}/apps/{ADK_APP_NAME}/users/{USER_ID}/sessions"
-    resp = client.post(create_url, json={"session_id": SESSION_ID}, headers={"Content-Type": "application/json"})
+    resp = client.post(create_url, json={"session_id": session_id}, headers={"Content-Type": "application/json"})
     if resp.status_code not in (200, 201, 409):
         pass  # still try /run; session might already exist
 
 
-def run_adk(user_message: str) -> str:
+def run_adk(user_message: str, session_id: str) -> str:
     """POST to ADK /run and return reply text."""
     body = {
         "appName": ADK_APP_NAME,
         "userId": USER_ID,
-        "sessionId": SESSION_ID,
+        "sessionId": session_id,
         "newMessage": {
             "role": "user",
             "parts": [{"text": user_message}],
         },
     }
     with httpx.Client(timeout=120) as client:
-        ensure_session_client(client)
+        ensure_session_client(client, session_id)
         resp = client.post(
             f"{ADK_URL}/run",
             json=body,
@@ -261,8 +273,8 @@ def main() -> None:
         )
         sys.exit(1)
 
-    # Optional: create session once at startup
-    ensure_session()
+    # Current session for this conversation. Fresh session per bridge run; reset phrases start a new one.
+    current_session_id = f"imsg_{int(time.time() * 1000)}"
 
     # imsg watch --json; use a pty so imsg sees a TTY and may stay running (some tools exit when stdout is a pipe)
     cmd = [imsg_bin, "watch", "--json"]
@@ -338,11 +350,13 @@ def main() -> None:
             if not user_message.strip():
                 imsg_send(format_sender_for_imsg(sender), "Say something after JARVIS.", imsg_bin)
                 continue
+            if should_reset_context(user_message):
+                current_session_id = f"imsg_{int(time.time() * 1000)}"
             # #region agent log
-            _debug_log("imsg_bridge:trigger", "calling ADK and sending reply", {"user_message_len": len(user_message)}, "H2")
+            _debug_log("imsg_bridge:trigger", "calling ADK and sending reply", {"user_message_len": len(user_message), "session_id": current_session_id}, "H2")
             # #endregion
             try:
-                reply = run_adk(user_message)
+                reply = run_adk(user_message, current_session_id)
             except Exception as e:
                 reply = f"Error: {e}"
             imsg_send(format_sender_for_imsg(sender), reply, imsg_bin)
