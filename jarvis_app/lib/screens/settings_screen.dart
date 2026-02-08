@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show ScaffoldMessenger, SnackBar;
 import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -9,6 +10,7 @@ import '../widgets/connection_status_widget.dart';
 import '../models/connection_status.dart';
 import '../services/featherless_service.dart';
 import '../services/agent_orchestrator.dart';
+import '../services/adk_service.dart';
 import '../services/tools/tool_registry.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -27,6 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return CupertinoPageScaffold(
       backgroundColor: isDark ? AppTheme.bgDark : AppTheme.bgLightSecondary,
       navigationBar: CupertinoNavigationBar(
+        transitionBetweenRoutes: false,
         backgroundColor: isDark ? AppTheme.bgDarkSecondary : AppTheme.bgLight,
         border: Border(
           bottom: BorderSide(
@@ -91,6 +94,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   isDark,
                 )
                     .animate(delay: 80.ms)
+                    .fadeIn(duration: 350.ms, curve: Curves.easeOut)
+                    .slideY(begin: 0.04, end: 0, duration: 350.ms, curve: const Cubic(0.4, 0, 0.2, 1)),
+
+                // ADK Backend
+                _buildSection(
+                  'ADK Backend',
+                  [
+                    _buildSwitchTile(
+                      'Use ADK',
+                      CupertinoIcons.gear,
+                      settings.useAdkBackend,
+                      (value) => settings.setUseAdkBackend(value),
+                      isDark,
+                    ),
+                    _buildNavigationTile(
+                      'ADK URL',
+                      settings.adkBackendUrl,
+                      CupertinoIcons.link,
+                      () => _showAdkUrlDialog(context, settings),
+                      isDark,
+                    ),
+                    _buildAdkTestTile(context, settings, isDark),
+                  ],
+                  isDark,
+                )
+                    .animate(delay: 120.ms)
                     .fadeIn(duration: 350.ms, curve: Curves.easeOut)
                     .slideY(begin: 0.04, end: 0, duration: 350.ms, curve: const Cubic(0.4, 0, 0.2, 1)),
 
@@ -353,7 +382,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
           return 'Sunny, 72°F (22°C). Light breeze.';
         },
       );
-      final result = await orchestrator.run('What is the weather in Boston?');
+      final (result, _) = await orchestrator.run([
+        {'role': 'user', 'content': 'What is the weather in Boston?'},
+      ]);
       service.dispose();
 
       if (!context.mounted) return;
@@ -448,9 +479,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         tools: registry.getToolsForLLM(),
         executeTool: (name, args) => registry.execute(name, args),
       );
-      final result = await orchestrator.run(
-        'Open https://google.com in my browser.',
-      );
+      final (result, _) = await orchestrator.run([
+        {'role': 'user', 'content': 'Open https://google.com in my browser.'},
+      ]);
       service.dispose();
 
       if (!context.mounted) return;
@@ -907,6 +938,86 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _showAddApiKeyDialog(context, settings);
   }
 
+  Widget _buildAdkTestTile(
+      BuildContext context, SettingsProvider settings, bool isDark) {
+    return CupertinoButton(
+      padding: const EdgeInsets.all(16),
+      alignment: Alignment.centerLeft,
+      onPressed: () => _testAdkConnection(context, settings),
+      child: Row(
+        children: [
+          Icon(
+            CupertinoIcons.checkmark_circle,
+            color: isDark ? AppTheme.textSecondary : AppTheme.textDarkSecondary,
+          ),
+          const SizedBox(width: 12),
+          Text(
+            'Test ADK Connection',
+            style: TextStyle(
+              fontSize: 16,
+              color: isDark ? AppTheme.textPrimary : AppTheme.textDark,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _testAdkConnection(
+      BuildContext context, SettingsProvider settings) async {
+    final url = settings.adkBackendUrl;
+    if (url.isEmpty) {
+      _showSnackBar(context, 'ADK URL is empty');
+      return;
+    }
+    final ok = await AdkService(baseUrl: url).testConnection();
+    if (context.mounted) {
+      _showSnackBar(
+        context,
+        ok ? 'ADK connected (jarvis_agent found)' : 'ADK not reachable',
+      );
+    }
+  }
+
+  void _showSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), duration: const Duration(seconds: 2)),
+    );
+  }
+
+  void _showAdkUrlDialog(BuildContext context, SettingsProvider settings) {
+    final controller = TextEditingController(text: settings.adkBackendUrl);
+
+    showCupertinoDialog(
+      context: context,
+      builder: (context) => CupertinoAlertDialog(
+        title: const Text('ADK Backend URL'),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: CupertinoTextField(
+            controller: controller,
+            placeholder: 'http://localhost:8000',
+            autocorrect: false,
+          ),
+        ),
+        actions: [
+          CupertinoDialogAction(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            child: const Text('Save'),
+            onPressed: () {
+              settings.setAdkBackendUrl(controller.text);
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showBaseUrlDialog(BuildContext context, SettingsProvider settings) {
     final controller = TextEditingController(text: settings.featherlessBaseUrl);
 
@@ -974,6 +1085,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         builder: (ctx) => CupertinoPageScaffold(
           backgroundColor: isDark ? AppTheme.bgDark : AppTheme.bgLightSecondary,
           navigationBar: CupertinoNavigationBar(
+            transitionBetweenRoutes: false,
             backgroundColor: isDark ? AppTheme.bgDarkSecondary : AppTheme.bgLight,
             border: Border(
               bottom: BorderSide(

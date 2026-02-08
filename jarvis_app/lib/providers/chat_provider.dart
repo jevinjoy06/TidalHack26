@@ -1,25 +1,43 @@
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 
 import '../models/message.dart';
 import '../models/connection_status.dart';
 import '../services/featherless_service.dart';
+import '../services/agent_orchestrator.dart';
+import '../services/adk_service.dart';
+import '../services/local_bridge_server.dart';
+import '../services/tools/tool_registry.dart';
 
 class ChatProvider extends ChangeNotifier {
   FeatherlessService _service = FeatherlessService();
   String? _currentApiKey;
   String? _currentModel;
   String? _currentBaseUrl;
+  bool _useAdkBackend = true;
+  String _adkBackendUrl = 'http://localhost:8000';
   final List<Message> _messages = [];
   bool _isLoading = false;
   String? _error;
   ConnectionStatus _connectionStatus = ConnectionStatus.disconnected;
   String? _connectionError;
   String? _currentChatId;
+  /// Raw conversation for the agent orchestrator (multi-turn).
+  List<Map<String, dynamic>> _agentMessages = [];
+  /// Status text: "Thinking...", "Running: shopping_search", etc.
+  String? _agentStatus;
+
+  final LocalBridgeServer _bridgeServer = LocalBridgeServer(port: 8765);
+  String? _adkSessionId;
+
+  void setAdkSettings(bool useAdk, String url) {
+    _useAdkBackend = useAdk;
+    _adkBackendUrl = url;
+  }
 
   List<Message> get messages => List.unmodifiable(_messages);
   bool get isLoading => _isLoading;
   String? get error => _error;
+  String? get agentStatus => _agentStatus;
   bool get isConnected => _connectionStatus == ConnectionStatus.connected;
   ConnectionStatus get connectionStatus => _connectionStatus;
   String? get connectionError => _connectionError;
@@ -87,7 +105,6 @@ class ChatProvider extends ChangeNotifier {
   Future<void> sendMessage(String content) async {
     if (content.trim().isEmpty) return;
 
-    // Add user message
     final userMessage = Message(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       content: content,
@@ -96,21 +113,26 @@ class ChatProvider extends ChangeNotifier {
       status: MessageStatus.sent,
     );
     _messages.add(userMessage);
+    _agentMessages.add({'role': 'user', 'content': content});
     _isLoading = true;
     _error = null;
+    _agentStatus = null;
     notifyListeners();
 
     try {
-      final response = await _service.sendMessage(content);
-      _messages.add(response);
+      if (_useAdkBackend && _adkBackendUrl.isNotEmpty) {
+        await _sendMessageViaAdk(content);
+      } else {
+        await _sendMessageViaOrchestrator();
+      }
       _connectionStatus = ConnectionStatus.connected;
       _connectionError = null;
     } catch (e) {
       _error = e.toString();
+      _agentStatus = null;
       _connectionStatus = ConnectionStatus.networkError;
       _connectionError = e.toString();
 
-      // Add error message
       _messages.add(Message(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         content: 'Sorry, I encountered an error: ${e.toString()}',
@@ -121,12 +143,104 @@ class ChatProvider extends ChangeNotifier {
       ));
     } finally {
       _isLoading = false;
+      _agentStatus = null;
       notifyListeners();
     }
   }
 
+  Future<void> _sendMessageViaAdk(String content) async {
+    if (!_bridgeServer.isRunning) {
+      await _bridgeServer.start();
+    }
+
+    const userId = 'default_user';
+    final isNewSession = _adkSessionId == null;
+    _adkSessionId ??= DateTime.now().millisecondsSinceEpoch.toString();
+
+    final adk = AdkService(baseUrl: _adkBackendUrl);
+
+    if (isNewSession) {
+      try {
+        await adk.createSession(userId: userId, sessionId: _adkSessionId!);
+      } catch (_) {
+        _adkSessionId = DateTime.now().millisecondsSinceEpoch.toString();
+        await adk.createSession(userId: userId, sessionId: _adkSessionId!);
+      }
+    }
+
+    _agentStatus = 'Thinking...';
+    notifyListeners();
+
+    final events = await adk.run(
+      userId: userId,
+      sessionId: _adkSessionId!,
+      message: content,
+    );
+
+    final toolName = AdkService.getCurrentToolFromEvents(events);
+    if (toolName != null) {
+      _agentStatus = 'Running: $toolName';
+      notifyListeners();
+    }
+
+    final responseText = AdkService.getFinalTextFromEvents(events) ??
+        'I was unable to generate a response.';
+
+    _agentMessages.add({'role': 'assistant', 'content': responseText});
+    _messages.add(Message(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      content: responseText,
+      role: MessageRole.assistant,
+      timestamp: DateTime.now(),
+      status: MessageStatus.sent,
+    ));
+    _agentStatus = null;
+  }
+
+  Future<void> _sendMessageViaOrchestrator() async {
+    final registry = ToolRegistry.global;
+    final orchestrator = AgentOrchestrator(
+      service: _service,
+      tools: registry.getToolsForLLM(),
+      executeTool: (name, args) => registry.execute(name, args),
+      onStatus: (status) {
+        _agentStatus = status;
+        notifyListeners();
+      },
+      systemPrompt: _jarvisSystemPrompt,
+    );
+    final (responseText, updatedMessages) = await orchestrator.run(_agentMessages);
+    _agentMessages = updatedMessages;
+
+    _messages.add(Message(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      content: responseText,
+      role: MessageRole.assistant,
+      timestamp: DateTime.now(),
+      status: MessageStatus.sent,
+    ));
+  }
+
+  static const String _jarvisSystemPrompt = '''
+You are JARVIS, a helpful AI assistant that can run tasks on the user's computer.
+
+CRITICAL: You MUST invoke tools by using the function calling API—never output "Tool: {...}", JSON, or tool syntax as text. When you need to create a doc, search, open a URL, etc., call the actual tool; writing it as text does nothing. NEVER fabricate or guess document links—the only real link comes from create_google_doc after you call it. If you output document content or a link without having called create_google_doc, you have failed.
+
+You have access to tools for:
+- Shopping: use shopping_search, pick the best option, call open_url with that product link.
+- Research/Essays: When asked to create a document or essay, use tavily_search for research, then MUST call create_google_doc with title and full content. The tool returns the real link—then call open_url with it. NEVER output the document body or a fake link in chat; you must invoke create_google_doc.
+- Email: compose and open mailto links
+- Calendar: read events
+- General: open URLs, notify when tasks complete
+
+Ask clarifying questions when needed (e.g., quantity, color, date) before using tools.
+Be concise and helpful.''';
+
   void clearMessages() {
     _messages.clear();
+    _agentMessages.clear();
+    _agentStatus = null;
+    _adkSessionId = null;
     notifyListeners();
   }
 
@@ -141,6 +255,7 @@ class ChatProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _bridgeServer.stop();
     _service.dispose();
     super.dispose();
   }

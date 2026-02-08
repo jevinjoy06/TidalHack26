@@ -28,5 +28,9 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>JARVIS needs calendar access to read your events for task planning.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>JARVIS needs full calendar access to read your events.</string>
 </dict>
 </plist>

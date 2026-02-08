@@ -457,9 +457,28 @@ class _ChatScreenState extends State<ChatScreen> {
             itemCount: provider.messages.length + (provider.isLoading ? 1 : 0),
             itemBuilder: (context, index) {
               if (index == provider.messages.length && provider.isLoading) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: TypingIndicator(),
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const TypingIndicator(),
+                      if (provider.agentStatus != null && provider.agentStatus!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Padding(
+                          padding: const EdgeInsets.only(left: 40),
+                          child: Text(
+                            provider.agentStatus!,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isDark ? AppTheme.textTertiary : AppTheme.textDarkSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 );
               }
 

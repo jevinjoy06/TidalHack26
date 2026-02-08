@@ -45,6 +45,9 @@ void _setupProviders(ChatProvider chatProvider, SettingsProvider settingsProvide
   settingsProvider.setBaseUrlCallback((baseUrl) {
     chatProvider.updateBaseUrl(baseUrl);
   });
+  settingsProvider.setAdkSettingsCallback((useAdk, url) {
+    chatProvider.setAdkSettings(useAdk, url);
+  });
 }
 
 class JarvisApp extends StatelessWidget {

@@ -31,6 +31,7 @@ class _TasksScreenState extends State<TasksScreen> {
 
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
+        transitionBetweenRoutes: false,
         backgroundColor: isDark ? AppTheme.bgDarkSecondary : AppTheme.bgLight,
         border: Border(
           bottom: BorderSide(

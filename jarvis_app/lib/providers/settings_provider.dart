@@ -13,13 +13,18 @@ class SettingsProvider extends ChangeNotifier {
   String _model = 'Qwen/Qwen2.5-14B-Instruct'; // Updated to match Featherless.ai format
   bool _voiceEnabled = true;
   bool _soundEnabled = true;
+  bool _useAdkBackend = true;
+  String _adkBackendUrl = 'http://localhost:8000';
   ConnectionStatus _connectionStatus = ConnectionStatus.disconnected;
   String? _connectionError;
   Function(String)? _onApiKeyChanged;
   Function(String)? _onModelChanged;
   Function(String)? _onBaseUrlChanged;
+  void Function(bool useAdk, String url)? _onAdkSettingsChanged;
 
   bool get isDarkMode => _isDarkMode;
+  bool get useAdkBackend => _useAdkBackend;
+  String get adkBackendUrl => _adkBackendUrl;
   String get apiKey => _apiKey;
   String get selectedApiKeyName => _selectedApiKeyName;
   Map<String, String> get apiKeyMap => Map.unmodifiable(_apiKeyMap);
@@ -41,6 +46,10 @@ class SettingsProvider extends ChangeNotifier {
 
   void setBaseUrlCallback(Function(String) callback) {
     _onBaseUrlChanged = callback;
+  }
+
+  void setAdkSettingsCallback(void Function(bool useAdk, String url) callback) {
+    _onAdkSettingsChanged = callback;
   }
 
   SettingsProvider();
@@ -81,6 +90,8 @@ class SettingsProvider extends ChangeNotifier {
     _model = prefs.getString('model') ?? Secrets.model;
     _voiceEnabled = prefs.getBool('voiceEnabled') ?? true;
     _soundEnabled = prefs.getBool('soundEnabled') ?? true;
+    _useAdkBackend = prefs.getBool('useAdkBackend') ?? true;
+    _adkBackendUrl = prefs.getString('adkBackendUrl') ?? 'http://localhost:8000';
     
     // Initialize connection status
     _connectionStatus = _apiKey.isEmpty
@@ -97,7 +108,26 @@ class SettingsProvider extends ChangeNotifier {
     if (_onBaseUrlChanged != null) {
       _onBaseUrlChanged!(_featherlessBaseUrl);
     }
+    if (_onAdkSettingsChanged != null) {
+      _onAdkSettingsChanged!(_useAdkBackend, _adkBackendUrl);
+    }
 
+    notifyListeners();
+  }
+
+  Future<void> setUseAdkBackend(bool value) async {
+    _useAdkBackend = value;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('useAdkBackend', value);
+    _onAdkSettingsChanged?.call(_useAdkBackend, _adkBackendUrl);
+    notifyListeners();
+  }
+
+  Future<void> setAdkBackendUrl(String value) async {
+    _adkBackendUrl = value.trim().isEmpty ? 'http://localhost:8000' : value.trim();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('adkBackendUrl', _adkBackendUrl);
+    _onAdkSettingsChanged?.call(_useAdkBackend, _adkBackendUrl);
     notifyListeners();
   }
 
