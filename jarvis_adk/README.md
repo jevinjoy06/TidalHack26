@@ -39,3 +39,13 @@ To trigger JARVIS from iMessage, run the imsg bridge. It only accepts messages f
    `python imsg_bridge.py`  
    (or `python -m imsg_bridge` from `jarvis_adk`.)
 3. From the allowed number, send e.g. `JARVIS what's on my calendar?` to get a reply in the same chat.
+
+## Phone call (Twilio, optional)
+
+To talk to JARVIS by calling a phone number, set up a Twilio number and run the voice webhook server. See [docs/PHONE_CALL_JARVIS_SETUP.md](docs/PHONE_CALL_JARVIS_SETUP.md) for .env variables (Twilio SID, auth token, `VOICE_WEBHOOK_BASE`), ngrok, and Twilio Console steps. Then:
+
+1. Start ADK: `adk api_server`
+2. Start voice server: `python voice_server.py` (port 8001)
+3. Expose with ngrok: `ngrok http 8001` and set `VOICE_WEBHOOK_BASE` in `.env` to the ngrok HTTPS URL
+4. In Twilio, set your number’s Voice webhook to `https://<your-ngrok-host>/voice/incoming` (POST)
+5. Call from an allowed number (8329696324 or 8326215771); speak your request and hear the reply.

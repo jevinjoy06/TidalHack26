@@ -193,6 +193,14 @@ def sanitize_reply(text: str) -> str:
     return stripped if stripped else text
 
 
+def ensure_session_client(client: httpx.Client) -> None:
+    """Create ADK session if it doesn't exist. /run returns 404 when session is missing."""
+    create_url = f"{ADK_URL}/apps/{ADK_APP_NAME}/users/{USER_ID}/sessions"
+    resp = client.post(create_url, json={"session_id": SESSION_ID}, headers={"Content-Type": "application/json"})
+    if resp.status_code not in (200, 201, 409):
+        pass  # still try /run; session might already exist
+
+
 def run_adk(user_message: str) -> str:
     """POST to ADK /run and return reply text."""
     body = {
@@ -205,6 +213,7 @@ def run_adk(user_message: str) -> str:
         },
     }
     with httpx.Client(timeout=120) as client:
+        ensure_session_client(client)
         resp = client.post(
             f"{ADK_URL}/run",
             json=body,
