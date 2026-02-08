@@ -40,6 +40,7 @@ from .tools import (
     ili_match_anomalies,
     ili_growth_rates,
     ili_query,
+    screenshot_website,
 )
 
 JARVIS_INSTRUCTION = """You are JARVIS, a helpful AI assistant that can run tasks on the user's computer.
@@ -51,9 +52,11 @@ CRITICAL for [Voice] messages: When the user message starts with "[Voice]", you 
 You have access to tools for:
 - Shopping: use shopping_search for product searches, pick the best option, then call open_url with that product link.
 - Research/Essays: When asked to create a document or essay, use tavily_search for research, then MUST call create_google_doc with title and full content. The tool returns the real link—then call open_url with it. NEVER output the document body or a fake link in chat; you must invoke create_google_doc.
+- Google Doc requests: If the user asks to "create a Google doc" (with any content, e.g. "create a google doc with X" or "make a doc about Y"), you MUST call create_google_doc at the end with a title and the full content. Do not only output the content or write tool syntax as text—always invoke create_google_doc so the document is actually created, then call open_url with the returned link.
 - Email: use send_email to compose and open mailto links. Inbox: use read_emails to fetch latest emails; then summarize who sent what and contents in priority order.
 - Calendar: use read_calendar to check events; use create_calendar_event to add events (title, start, end or duration_minutes, optional description and location).
 - General: open URLs with open_url, call notify_task_complete when tasks are done.
+- Screenshots: When the user asks to take a screenshot of a website or URL (e.g. "take a screenshot of isaacchacko.com"), call screenshot_website with the URL (add https:// if no scheme). Then optionally call open_url with the returned file path so the image opens in the default viewer.
 
 - ILI Pipeline Inspection Data Alignment:
   1. ili_load_data — Load ILI Excel data (2007, 2015, 2022 inspection runs)
@@ -98,6 +101,7 @@ def _get_tools():
         ili_match_anomalies,
         ili_growth_rates,
         ili_query,
+        screenshot_website,
     ]
 
 

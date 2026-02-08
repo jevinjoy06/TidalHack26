@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show MaterialApp, ThemeData;
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -77,30 +78,33 @@ class JarvisApp extends StatelessWidget {
     // Initialize settings AFTER callbacks are registered
     settingsProvider.initialize();
 
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider.value(value: chatProvider),
-        ChangeNotifierProvider.value(value: chatHistoryProvider),
-        ChangeNotifierProvider.value(value: settingsProvider),
-        ChangeNotifierProvider.value(value: tasksProvider),
-        ChangeNotifierProvider.value(value: iliProvider),
-      ],
-      child: Consumer<SettingsProvider>(
-        builder: (context, settings, _) {
-          final isDark = settings.isDarkMode;
-          return CupertinoApp(
-            title: 'JARVIS',
-            debugShowCheckedModeBanner: false,
-            theme: isDark ? AppTheme.darkTheme : AppTheme.lightTheme,
-            home: Container(
-              decoration: BoxDecoration(
-                gradient: isDark ? AppTheme.darkGradient : null,
-                color: isDark ? AppTheme.figmaBackground : AppTheme.bgLightSecondary,
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(),
+      home: MultiProvider(
+        providers: [
+          ChangeNotifierProvider.value(value: chatProvider),
+          ChangeNotifierProvider.value(value: settingsProvider),
+          ChangeNotifierProvider.value(value: tasksProvider),
+          ChangeNotifierProvider.value(value: iliProvider),
+        ],
+        child: Consumer<SettingsProvider>(
+          builder: (context, settings, _) {
+            final isDark = settings.isDarkMode;
+            return CupertinoApp(
+              title: 'JARVIS',
+              debugShowCheckedModeBanner: false,
+              theme: isDark ? AppTheme.darkTheme : AppTheme.lightTheme,
+              home: Container(
+                decoration: BoxDecoration(
+                  gradient: isDark ? AppTheme.darkGradient : null,
+                  color: isDark ? AppTheme.figmaBackground : AppTheme.bgLightSecondary,
+                ),
+                child: const HomeScreen(),
               ),
-              child: const HomeScreen(),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }

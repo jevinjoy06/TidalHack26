@@ -17,7 +17,13 @@ Google ADK backend for JARVIS. Run the ADK API server before starting the Flutte
    - **Gemini**: Set `GOOGLE_API_KEY` only (no OPENAI_API_BASE).
    - **Tools**: `SERPAPI_KEY`, `TAVILY_API_KEY`
 
-3. Start the ADK server:
+3. **Screenshot tool (optional):** To use "take a screenshot of &lt;website&gt;", install Playwright's Chromium once after pip install:
+   ```bash
+   playwright install chromium
+   ```
+   Screenshots are saved to your Desktop (or set `JARVIS_SCREENSHOT_DIR` to override).
+
+4. Start the ADK server:
    ```bash
    adk api_server
    ```

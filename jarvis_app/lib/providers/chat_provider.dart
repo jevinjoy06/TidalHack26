@@ -252,8 +252,35 @@ class ChatProvider extends ChangeNotifier {
       message: content,
     );
 
+
     // Check if cancelled after ADK call
     if (token != _sendToken) return;
+    // #region agent log
+    final toolsCalled = AdkService.getToolsCalledFromEvents(events).toList();
+    final rawTextBeforeFallback = AdkService.getFinalTextFromEvents(events);
+    try {
+      final payload = {
+        'location': 'chat_provider.dart:_sendMessageViaAdk',
+        'message': 'ADK run result',
+        'data': {
+          'eventCount': events.length,
+          'messageLength': content.length,
+          'toolsCalled': toolsCalled,
+          'rawTextIsNull': rawTextBeforeFallback == null,
+          'rawTextPreview': rawTextBeforeFallback != null ? (rawTextBeforeFallback.length > 80 ? rawTextBeforeFallback.substring(0, 80) : rawTextBeforeFallback) : null,
+          'usedFallback': rawTextBeforeFallback == null,
+          'eventSummary': events.map((e) {
+        final content = e['content'] as Map<String, dynamic>?;
+        final parts = content?['parts'] as List<dynamic>?;
+        return {'author': e['author'], 'partsCount': parts?.length ?? 0};
+      }).toList(),
+        },
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'hypothesisId': 'H1_H2_H4',
+      };
+      File('/Users/allenthomas/TidalHack26/.cursor/debug.log').writeAsStringSync('${jsonEncode(payload)}\n', mode: FileMode.append);
+    } catch (_) {}
+    // #endregion
 
     final toolName = AdkService.getCurrentToolFromEvents(events);
     if (toolName != null) {
@@ -277,6 +304,10 @@ class ChatProvider extends ChangeNotifier {
       timestamp: DateTime.now(),
       status: MessageStatus.sent,
     ));
+    // Reset session when open_url was called so next turn gets a fresh context (avoids context bloat after opening docs/links).
+    if (toolsCalled.contains('open_url')) {
+      _adkSessionId = null;
+    }
     _agentStatus = null;
   }
 
@@ -323,7 +354,7 @@ class ChatProvider extends ChangeNotifier {
     if (tools.isNotEmpty) {
       return 'I ran your request but didn\'t get a clear summary. Check whether the action completed (e.g. document, link, email). You can also try rephrasing.';
     }
-    return 'I was unable to generate a response. Try rephrasing your request.';
+    return 'I didn\'t get a clear response this time. If you asked for a document or link, check your Google Docs or browser—it may have been created. Try rephrasing or say "create the doc" again.';
   }
 
   /// Replaces model output that emits literal <tool_call></tool_call> as text

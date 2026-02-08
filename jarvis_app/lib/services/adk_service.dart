@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
@@ -55,7 +56,44 @@ class AdkService {
       throw Exception('ADK run failed: ${resp.statusCode} ${resp.body}');
     }
     final list = jsonDecode(resp.body) as List<dynamic>;
-    return list.map((e) => e as Map<String, dynamic>).toList();
+    final events = list.map((e) => e as Map<String, dynamic>).toList();
+    // #region agent log
+    _debugLogAdkEvents('adk_service.dart:run', events, message.length);
+    // #endregion
+    return events;
+  }
+
+  static void _debugLogAdkEvents(String location, List<Map<String, dynamic>> events, int messageLength) {
+    try {
+      int partsWithFunctionCall = 0;
+      int partsWithText = 0;
+      final authors = <String>[];
+      for (final e in events) {
+        authors.add((e['author'] as String?) ?? '');
+        final parts = (e['content'] as Map<String, dynamic>?)?['parts'] as List<dynamic>?;
+        if (parts == null) continue;
+        for (final p in parts) {
+          if (p is Map) {
+            if (p['functionCall'] != null) partsWithFunctionCall++;
+            if (p['text'] != null) partsWithText++;
+          }
+        }
+      }
+      final payload = {
+        'location': location,
+        'message': 'ADK events summary',
+        'data': {
+          'eventCount': events.length,
+          'messageLength': messageLength,
+          'partsWithFunctionCall': partsWithFunctionCall,
+          'partsWithText': partsWithText,
+          'authors': authors,
+        },
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'hypothesisId': 'H3_H5',
+      };
+      File('/Users/allenthomas/TidalHack26/.cursor/debug.log').writeAsStringSync('${jsonEncode(payload)}\n', mode: FileMode.append);
+    } catch (_) {}
   }
 
   /// Run agent with SSE. POST /run_sse
