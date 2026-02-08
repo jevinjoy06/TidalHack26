@@ -1,6 +1,6 @@
-import 'package:calendar_bridge/calendar_bridge.dart';
+import 'package:googleapis/calendar/v3.dart' as calendar;
 
-import '../../config/secrets.dart';
+import 'google_docs_tool.dart';
 import 'tool_registry.dart';
 
 const readCalendarSchema = {
@@ -19,56 +19,58 @@ const readCalendarSchema = {
 };
 
 Future<String> readCalendarExecutor(Map<String, dynamic> args) async {
+  final client = await getAuthenticatedClient();
+  if (client == null) {
+    return 'Error: Please sign in with Google first (Settings > Sign in with Google).';
+  }
+
+  final query = (args['query'] ?? '').toString().toLowerCase();
+  final now = DateTime.now();
+
+  DateTime start = now;
+  DateTime end = now.add(const Duration(days: 14));
+  if (query.contains('next')) {
+    const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    for (var i = 0; i < 7; i++) {
+      final d = now.add(Duration(days: i + 1));
+      final dayName = weekdays[d.weekday - 1];
+      if (query.contains(dayName)) {
+        start = DateTime(d.year, d.month, d.day);
+        end = start.add(const Duration(days: 1));
+        break;
+      }
+    }
+  } else if (query.contains('this week')) {
+    final weekday = now.weekday;
+    start = DateTime(now.year, now.month, now.day - (weekday - 1));
+    end = start.add(const Duration(days: 7));
+  }
+
   try {
-    final bridge = CalendarBridge();
-    final hasPermission = await bridge.hasPermissions();
-    if (hasPermission != PermissionStatus.granted) {
-      final granted = await bridge.requestPermissions();
-      if (!granted) {
-        return 'Calendar access not granted. Please allow in System Settings > Privacy > Calendars.';
-      }
-    }
+    final calendarApi = calendar.CalendarApi(client);
+    final eventsResponse = await calendarApi.events.list(
+      'primary',
+      timeMin: start.toUtc(),
+      timeMax: end.toUtc(),
+      singleEvents: true,
+      orderBy: 'startTime',
+      maxResults: 30,
+    );
 
-    final query = (args['query'] ?? '').toString().toLowerCase();
-    final now = DateTime.now();
-
-    DateTime start = now;
-    DateTime end = now.add(const Duration(days: 14));
-    if (query.contains('next')) {
-      const weekdays = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
-      for (var i = 0; i < 7; i++) {
-        final d = now.add(Duration(days: i + 1));
-        final dayName = weekdays[d.weekday - 1];
-        if (query.contains(dayName)) {
-          start = DateTime(d.year, d.month, d.day);
-          end = start.add(const Duration(days: 1));
-          break;
-        }
-      }
-    } else if (query.contains('this week')) {
-      final weekday = now.weekday;
-      start = DateTime(now.year, now.month, now.day - (weekday - 1));
-      end = start.add(const Duration(days: 7));
-    }
-
-    final calendars = await bridge.getCalendars();
-    if (calendars.isEmpty) return 'No calendars found.';
-
-    final events = <CalendarEvent>[];
-    for (final cal in calendars) {
-      final evts = await bridge.getEvents(cal.id, startDate: start, endDate: end);
-      events.addAll(evts);
-    }
-
-    if (events.isEmpty) {
+    final items = eventsResponse.items;
+    if (items == null || items.isEmpty) {
       return 'No events found between ${start.toIso8601String().split('T')[0]} and ${end.toIso8601String().split('T')[0]}.';
     }
 
     final sb = StringBuffer();
-    for (var i = 0; i < events.length && i < 10; i++) {
-      final e = events[i];
-      final title = e.title ?? 'Untitled';
-      final startStr = e.start?.toString().split('.')[0] ?? '';
+    for (var i = 0; i < items.length && i < 10; i++) {
+      final e = items[i];
+      final title = e.summary ?? 'Untitled';
+      final startDt = e.start?.dateTime;
+      final startDate = e.start?.date;
+      final startStr = startDt != null
+          ? startDt.toIso8601String().split('.')[0]
+          : (startDate ?? '');
       sb.writeln('- $title ($startStr)');
     }
     return sb.toString().trim();

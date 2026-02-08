@@ -1,5 +1,6 @@
 """JARVIS agent for Google ADK."""
 import os
+from datetime import datetime
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -31,6 +32,7 @@ from .tools import (
     send_email,
     read_calendar,
     read_emails,
+    create_calendar_event,
     notify_task_complete,
     create_google_doc,
 )
@@ -43,7 +45,7 @@ You have access to tools for:
 - Shopping: use shopping_search for product searches, pick the best option, then call open_url with that product link.
 - Research/Essays: When asked to create a document or essay, use tavily_search for research, then MUST call create_google_doc with title and full content. The tool returns the real link—then call open_url with it. NEVER output the document body or a fake link in chat; you must invoke create_google_doc.
 - Email: use send_email to compose and open mailto links. Inbox: use read_emails to fetch latest emails; then summarize who sent what and contents in priority order.
-- Calendar: use read_calendar to check events.
+- Calendar: use read_calendar to check events; use create_calendar_event to add events (title, start, end or duration_minutes, optional description and location).
 - General: open URLs with open_url, call notify_task_complete when tasks are done.
 
 Ask clarifying questions when needed (e.g., quantity, color, date) before using tools.
@@ -71,6 +73,7 @@ def _get_tools():
         send_email,
         read_calendar,
         read_emails,
+        create_calendar_event,
         notify_task_complete,
         create_google_doc,
     ]
@@ -82,10 +85,15 @@ def get_agent():
         raise ImportError("google-adk not installed. Run: pip install google-adk")
     if _USE_FEATHERLESS and LiteLlm is None:
         raise ImportError("LiteLLM required for Featherless. Run: pip install litellm")
+    today_iso = datetime.now().strftime("%Y-%m-%d")
+    instruction = (
+        JARVIS_INSTRUCTION
+        + f"\n\nToday's date is {today_iso}. For create_calendar_event: when the user says 'tomorrow', use the next calendar day in YYYY-MM-DD; when they give a time (e.g. 5PM), use that time with the correct date in ISO 8601 (e.g. {today_iso}T17:00:00 for today 5PM)."
+    )
     return Agent(
         model=_get_model(),
         name="jarvis_agent",
-        instruction=JARVIS_INSTRUCTION,
+        instruction=instruction,
         tools=_get_tools(),
     )
 

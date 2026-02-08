@@ -71,3 +71,25 @@ def read_emails(max_results: int = 15, unread_only: bool = False) -> dict:
     """Fetch the user's latest Gmail emails; returns sender, subject, and snippet in priority order."""
     result = _call_bridge("read_emails", {"max_results": max_results, "unread_only": unread_only})
     return {"result": result}
+
+
+def create_calendar_event(
+    title: str,
+    start: str,
+    end: str = None,
+    duration_minutes: int = None,
+    description: str = "",
+    location: str = "",
+) -> dict:
+    """Create an event on the user's Google Calendar. title and start required; end or duration_minutes optional."""
+    args = {"title": title, "start": start}
+    if end is not None and end.strip():
+        args["end"] = end
+    if duration_minutes is not None:
+        args["duration_minutes"] = duration_minutes
+    if description:
+        args["description"] = description
+    if location:
+        args["location"] = location
+    result = _call_bridge("create_calendar_event", args)
+    return {"result": result}
