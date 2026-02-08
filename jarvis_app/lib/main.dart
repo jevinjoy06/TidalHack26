@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'providers/chat_provider.dart';
+import 'providers/chat_history_provider.dart';
 import 'providers/settings_provider.dart';
 import 'providers/tasks_provider.dart';
 import 'providers/ili_provider.dart';
@@ -35,7 +36,15 @@ Future<void> main() async {
   runApp(const JarvisApp());
 }
 
-void _setupProviders(ChatProvider chatProvider, SettingsProvider settingsProvider) {
+void _setupProviders(
+  ChatProvider chatProvider,
+  ChatHistoryProvider chatHistoryProvider,
+  SettingsProvider settingsProvider,
+) {
+  // Connect chat providers
+  chatProvider.setChatHistoryProvider(chatHistoryProvider);
+  chatHistoryProvider.setChatProvider(chatProvider);
+  
   // Connect settings to chat provider for API key, model, and base URL updates
   settingsProvider.setApiKeyCallback((apiKey) {
     chatProvider.updateApiKey(apiKey);
@@ -49,6 +58,9 @@ void _setupProviders(ChatProvider chatProvider, SettingsProvider settingsProvide
   settingsProvider.setAdkSettingsCallback((useAdk, url) {
     chatProvider.setAdkSettings(useAdk, url);
   });
+  
+  // Load chat history from storage
+  chatHistoryProvider.loadHistory();
 }
 
 class JarvisApp extends StatelessWidget {
@@ -57,16 +69,18 @@ class JarvisApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chatProvider = ChatProvider();
+    final chatHistoryProvider = ChatHistoryProvider();
     final settingsProvider = SettingsProvider();
     final tasksProvider = TasksProvider();
     final iliProvider = IliProvider();
-    _setupProviders(chatProvider, settingsProvider);
+    _setupProviders(chatProvider, chatHistoryProvider, settingsProvider);
     // Initialize settings AFTER callbacks are registered
     settingsProvider.initialize();
 
     return MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: chatProvider),
+        ChangeNotifierProvider.value(value: chatHistoryProvider),
         ChangeNotifierProvider.value(value: settingsProvider),
         ChangeNotifierProvider.value(value: tasksProvider),
         ChangeNotifierProvider.value(value: iliProvider),

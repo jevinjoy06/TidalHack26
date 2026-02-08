@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 
 import '../models/message.dart';
 import '../models/connection_status.dart';
+import '../models/chat_history.dart';
 import '../services/featherless_service.dart';
 import '../services/agent_orchestrator.dart';
 import '../services/adk_service.dart';
@@ -34,6 +36,9 @@ class ChatProvider extends ChangeNotifier {
   
   /// Token to track current message send. Incremented when clearMessages is called.
   int _sendToken = 0;
+  
+  /// Reference to chat history provider for auto-saving
+  dynamic _chatHistoryProvider;
 
   void setAdkSettings(bool useAdk, String url) {
     _useAdkBackend = useAdk;
@@ -51,6 +56,10 @@ class ChatProvider extends ChangeNotifier {
 
   ChatProvider() {
     _checkConnection();
+  }
+  
+  void setChatHistoryProvider(dynamic chatHistoryProvider) {
+    _chatHistoryProvider = chatHistoryProvider;
   }
   
   void updateApiKey(String apiKey) {
@@ -114,6 +123,11 @@ class ChatProvider extends ChangeNotifier {
     // Capture current token at start of send
     final currentToken = _sendToken;
 
+    // Generate chat ID if this is a new chat
+    if (_currentChatId == null) {
+      _currentChatId = _generateChatId();
+    }
+
     final today = DateTime.now().toIso8601String().split('T')[0];
     final contentWithDate = '[Current date: $today.] $content';
 
@@ -130,6 +144,12 @@ class ChatProvider extends ChangeNotifier {
     _error = null;
     _agentStatus = null;
     notifyListeners();
+    
+    // Set loading state and save chat with user message
+    if (_chatHistoryProvider != null && _currentChatId != null) {
+      _chatHistoryProvider.setLoadingState(_currentChatId!, true);
+      await _chatHistoryProvider.saveChat(_currentChatId!, _messages, isLoading: true);
+    }
 
     try {
       if (_useAdkBackend && _adkBackendUrl.isNotEmpty) {
@@ -182,8 +202,20 @@ class ChatProvider extends ChangeNotifier {
         _isLoading = false;
         _agentStatus = null;
         notifyListeners();
+        
+        // Clear loading state and save final chat
+        if (_chatHistoryProvider != null && _currentChatId != null) {
+          _chatHistoryProvider.setLoadingState(_currentChatId!, false);
+          await _chatHistoryProvider.saveChat(_currentChatId!, _messages, isLoading: false);
+        }
       }
     }
+  }
+  
+  String _generateChatId() {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final random = Random().nextInt(9999);
+    return '${timestamp}_$random';
   }
 
   Future<void> _sendMessageViaAdk(String content, int token) async {
@@ -347,7 +379,30 @@ Be concise and helpful.''';
     _agentMessages.clear();
     _agentStatus = null;
     _adkSessionId = null;
+    _currentChatId = null;
     _isLoading = false;
+    notifyListeners();
+  }
+  
+  Future<void> loadChatFromHistory(ChatHistoryItem chatItem) async {
+    _currentChatId = chatItem.id;
+    _messages.clear();
+    _messages.addAll(chatItem.messages);
+    
+    // Rebuild agent messages from chat messages
+    _agentMessages.clear();
+    for (final message in chatItem.messages) {
+      _agentMessages.add({
+        'role': message.role == MessageRole.user ? 'user' : 'assistant',
+        'content': message.content,
+      });
+    }
+    
+    _adkSessionId = chatItem.id; // Reuse chat ID as session ID
+    _isLoading = false;
+    _error = null;
+    _agentStatus = null;
+    
     notifyListeners();
   }
 

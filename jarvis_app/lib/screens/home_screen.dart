@@ -7,6 +7,8 @@ import 'ili_screen.dart';
 import 'settings_screen.dart';
 import '../theme/app_theme.dart';
 import '../providers/chat_provider.dart';
+import '../providers/chat_history_provider.dart';
+import '../widgets/chat_history_list.dart';
 
 /// Figma UI layout: left sidebar (280px) + main content.
 /// Sidebar: logo, New Chat, search (chat only), recent (chat only), bottom nav.
@@ -238,28 +240,40 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
             const SizedBox(height: 24),
-            // Recent section (placeholder - chat list lives in ChatScreen)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  'RECENT',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: mutedFg,
-                    letterSpacing: 1.2,
-                  ),
+          ],
+          // Recent section (show on all tabs)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'RECENT',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: mutedFg,
+                  letterSpacing: 1.2,
                 ),
               ),
             ),
-            const SizedBox(height: 8),
-            const Expanded(
-              child: SizedBox(),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: Consumer2<ChatHistoryProvider, ChatProvider>(
+              builder: (context, historyProvider, chatProvider, _) {
+                return ChatHistoryList(
+                  history: historyProvider.history,
+                  currentChatId: chatProvider.currentChatId,
+                  onChatTap: (chatId) async {
+                    await historyProvider.loadChatById(chatId);
+                    _onNavTap(0); // Switch to chat screen
+                  },
+                  onChatDelete: (chatId) => historyProvider.deleteChat(chatId),
+                  onChatRename: (chatId, newName) => historyProvider.renameChat(chatId, newName),
+                );
+              },
             ),
-          ] else
-            const Spacer(),
+          ),
           // Bottom nav (Tasks, Settings) — Chat is reached via "New Chat" only
           Container(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
